@@ -6,16 +6,24 @@ import com.everrefine.elms.application.command.LessonImportRowCommand;
 import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
 import com.everrefine.elms.application.command.LessonSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
-import com.everrefine.elms.application.dto.*;
+import com.everrefine.elms.application.dto.CourseLessonsDto;
+import com.everrefine.elms.application.dto.LessonDto;
+import com.everrefine.elms.application.dto.LessonGroupDto;
+import com.everrefine.elms.application.dto.LessonImportResponseDto;
+import com.everrefine.elms.application.dto.LessonPageDto;
+import com.everrefine.elms.application.dto.LessonWithCourseAndLessonGroupDto;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
+import com.everrefine.elms.domain.model.lesson.LessonTag;
 import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
 import com.everrefine.elms.domain.repository.CourseRepository;
 import com.everrefine.elms.domain.repository.LessonGroupRepository;
 import com.everrefine.elms.domain.repository.LessonRepository;
+import com.everrefine.elms.domain.repository.LessonTagRepository;
+import com.everrefine.elms.domain.repository.TagRepository;
 import com.everrefine.elms.domain.service.LessonDomainService;
 import java.io.BufferedWriter;
 import java.io.ByteArrayOutputStream;
@@ -44,6 +52,8 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   private final LessonGroupRepository lessonGroupRepository;
   private final CourseRepository courseRepository;
   private final LessonDomainService lessonDomainService;
+  private final TagRepository tagRepository;
+  private final LessonTagRepository lessonTagRepository;
 
   /**
    * CSV出力用に値をエスケープする。
@@ -163,7 +173,21 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
     Lesson currentLesson = findLessonOrThrow(lessonUpdateCommand.id());
     Lesson updatedLesson =
         lessonRepository.updateLesson(lessonUpdateCommand.toLesson(currentLesson));
-    return LessonDto.from(updatedLesson);
+
+    lessonTagRepository.deleteByLessonId(updatedLesson.id());
+
+    for (String tagName : lessonUpdateCommand.tags()) {
+      LessonTag tag =
+          tagRepository.findByName(tagName)
+              .orElseGet(
+                  () -> tagRepository.createTag(tagName));
+
+      lessonTagRepository.createLessonTag(updatedLesson.id(), tag.id());
+    }
+
+    List<LessonTag> tags = tagRepository.findByLessonId(updatedLesson.id());
+
+    return LessonDto.from(updatedLesson, tags);
   }
 
   @Override
