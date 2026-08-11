@@ -174,8 +174,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   @Override
   @Transactional
   public LessonDto updateLesson(LessonUpdateCommand lessonUpdateCommand) {
-    List<String> tagNames =
-        lessonUpdateCommand.tags().stream().map(name -> new TagName(name).value()).toList();
+    List<TagName> tagNames = lessonUpdateCommand.tags().stream().map(TagName::new).toList();
     throwExceptionIfTagNamesDuplicated(tagNames);
 
     Lesson currentLesson = findLessonOrThrow(lessonUpdateCommand.id());
@@ -184,12 +183,12 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
 
     lessonTagRepository.deleteByLessonId(updatedLesson.id());
 
-    Map<String, Tag> tagByName =
+    Map<TagName, Tag> tagByName =
         tagRepository.findByNameIn(tagNames).stream()
-            .collect(Collectors.toMap(Tag::name, Function.identity()));
-    List<String> newTagNames =
+            .collect(Collectors.toMap(Tag::tagName, Function.identity()));
+    List<TagName> newTagNames =
         tagNames.stream().filter(tagName -> !tagByName.containsKey(tagName)).toList();
-    tagRepository.createTags(newTagNames).forEach(tag -> tagByName.put(tag.name(), tag));
+    tagRepository.createTags(newTagNames).forEach(tag -> tagByName.put(tag.tagName(), tag));
 
     List<Tag> tags =
         tagNames.stream()
@@ -202,7 +201,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
     return LessonDto.from(updatedLesson, tags);
   }
 
-  private void throwExceptionIfTagNamesDuplicated(List<String> tagNames) {
+  private void throwExceptionIfTagNamesDuplicated(List<TagName> tagNames) {
     if (tagNames.size() != tagNames.stream().distinct().count()) {
       throw new BadRequestException("タグ名は重複しないように入力してください");
     }
