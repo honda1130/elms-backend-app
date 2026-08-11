@@ -1,5 +1,6 @@
 package com.everrefine.elms.domain.repository;
 
+import java.util.List;
 import java.util.UUID;
 
 /** レッスンとタグの紐付けリポジトリインターフェース。 */
@@ -13,10 +14,10 @@ public interface LessonTagRepository {
   void deleteByLessonId(UUID lessonId);
 
   /**
-   * レッスンとタグの紐付けを作成する。
+   * レッスンとタグの紐付けを一括作成する。
    *
    * @param lessonId レッスンID
-   * @param tagId タグID
+   * @param tagIds タグID一覧
    */
-  void createLessonTag(UUID lessonId, UUID tagId);
+  void createLessonTags(UUID lessonId, List<UUID> tagIds);
 }

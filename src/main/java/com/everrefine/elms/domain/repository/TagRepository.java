@@ -1,34 +1,24 @@
 package com.everrefine.elms.domain.repository;
 
-import com.everrefine.elms.domain.model.lesson.LessonTag;
+import com.everrefine.elms.domain.model.tag.Tag;
 import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 
 /** タグのリポジトリインターフェース。 */
 public interface TagRepository {
 
   /**
-   * タグ名でタグを取得する。
+   * タグ名一覧でタグを取得する。
    *
-   * @param name タグ名
-   * @return タグ（存在しない場合は空）
-   */
-  Optional<LessonTag> findByName(String name);
-
-  /**
-   * タグを作成する。
-   *
-   * @param name タグ名
-   * @return 作成したタグ
-   */
-  LessonTag createTag(String name);
-
-  /**
-   * レッスンIDに紐づくタグ一覧を取得する。
-   *
-   * @param lessonId レッスンID
+   * @param names タグ名一覧
    * @return タグ一覧
    */
-  List<LessonTag> findByLessonId(UUID lessonId);
+  List<Tag> findByNameIn(List<String> names);
+
+  /**
+   * タグを一括作成する。
+   *
+   * @param names タグ名一覧
+   * @return 作成したタグ一覧
+   */
+  List<Tag> createTags(List<String> names);
 }

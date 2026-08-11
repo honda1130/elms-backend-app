@@ -6,8 +6,4 @@ import org.springframework.data.relational.core.mapping.Table;
 
 /** レッスンタグ紐付けのエンティティ。 */
 @Table("lesson_tags")
-public record LessonTagEntity(
-    @Id UUID id,
-    UUID lessonId,
-    UUID tagId
-) {}
+public record LessonTagEntity(@Id UUID id, UUID lessonId, UUID tagId) {}

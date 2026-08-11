@@ -13,22 +13,10 @@ import org.springframework.stereotype.Repository;
 public interface LessonTagDao extends CrudRepository<LessonTagEntity, UUID> {
 
   @Modifying
-  @Query("""
+  @Query(
+      """
       DELETE FROM lesson_tags
       WHERE lesson_id = :lessonId
       """)
   void deleteByLessonId(@Param("lessonId") UUID lessonId);
-
-  @Modifying
-  @Query("""
-      INSERT INTO lesson_tags (
-        lesson_id,
-        tag_id
-      )
-      VALUES (
-        :lessonId,
-        :tagId
-      )
-      """)
-  void create(@Param("lessonId") UUID lessonId, @Param("tagId") UUID tagId);
 }

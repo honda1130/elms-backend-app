@@ -15,6 +15,7 @@ import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
 import com.everrefine.elms.application.dto.LessonPageDto;
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.repository.LessonRepository;
@@ -603,6 +604,88 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
+    void 前後に空白があるタグ名はtrimして同じタグとして扱うこと() {
+      // Arrange - 既存レッスンと既存タグを準備
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
+      UUID lessonId =
+          testData.createLesson(
+              lessonGroupId,
+              courseId,
+              new BigDecimal("1"),
+              "元のタイトル",
+              "元の説明",
+              "https://example.com/old-video.mp4");
+      UUID tagId = UUID.randomUUID();
+      jdbcTemplate.update("INSERT INTO tags (id, name) VALUES (?, ?)", tagId, "Java");
+
+      LessonUpdateRequest request =
+          new LessonUpdateRequest(
+              "更新後タイトル", "更新後説明", null, List.of(new LessonTagRequest(" Java ")));
+      LessonUpdateCommand command = request.toCommand(lessonId);
+
+      // Act
+      LessonDto result = lessonApplicationService.updateLesson(command);
+
+      // Assert
+      assertEquals(
+          List.of("Java"), result.tags().stream().map(tag -> tag.name()).sorted().toList());
+
+      Integer tagCount =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM tags WHERE name = ?", Integer.class, "Java");
+      assertEquals(1, tagCount);
+
+      List<String> tagNames =
+          jdbcTemplate.queryForList(
+              """
+                  SELECT t.name
+                  FROM tags t
+                  INNER JOIN lesson_tags lt
+                    ON t.id = lt.tag_id
+                  WHERE lt.lesson_id = ?
+                  ORDER BY t.name
+                  """,
+              String.class,
+              lessonId);
+      assertEquals(List.of("Java"), tagNames);
+
+      Integer lessonTagCount =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM lesson_tags WHERE lesson_id = ?", Integer.class, lessonId);
+      assertEquals(1, lessonTagCount);
+    }
+
+    @Test
+    void trim後のタグ名が重複する場合はBadRequestExceptionが投げられること() {
+      // Arrange - 既存レッスンを準備
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
+      UUID lessonId =
+          testData.createLesson(
+              lessonGroupId,
+              courseId,
+              new BigDecimal("1"),
+              "元のタイトル",
+              "元の説明",
+              "https://example.com/old-video.mp4");
+
+      LessonUpdateRequest request =
+          new LessonUpdateRequest(
+              "更新後タイトル",
+              "更新後説明",
+              null,
+              List.of(new LessonTagRequest("Java"), new LessonTagRequest(" Java ")));
+      LessonUpdateCommand command = request.toCommand(lessonId);
+
+      // Act & Assert
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class, () -> lessonApplicationService.updateLesson(command));
+      assertEquals("タグ名は重複しないように入力してください", exception.getMessage());
+    }
+
+    @Test
     void 既存タグ紐付けをリクエストされたタグで洗い替えできること() {
       // Arrange - 既存タグが紐づいたレッスンを準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
@@ -621,8 +704,7 @@ public class LessonApplicationServiceImplTest {
           "INSERT INTO lesson_tags (lesson_id, tag_id) VALUES (?, ?)", lessonId, oldTagId);
 
       LessonUpdateRequest request =
-          new LessonUpdateRequest(
-              "更新後タイトル", "更新後説明", null, List.of(new LessonTagRequest("Java")));
+          new LessonUpdateRequest("更新後タイトル", "更新後説明", null, List.of(new LessonTagRequest("Java")));
       LessonUpdateCommand command = request.toCommand(lessonId);
 
       // Act
@@ -665,8 +747,7 @@ public class LessonApplicationServiceImplTest {
       jdbcTemplate.update(
           "INSERT INTO lesson_tags (lesson_id, tag_id) VALUES (?, ?)", lessonId, tagId);
 
-      LessonUpdateRequest request =
-          new LessonUpdateRequest("更新後タイトル", "更新後説明", null, List.of());
+      LessonUpdateRequest request = new LessonUpdateRequest("更新後タイトル", "更新後説明", null, List.of());
       LessonUpdateCommand command = request.toCommand(lessonId);
 
       // Act

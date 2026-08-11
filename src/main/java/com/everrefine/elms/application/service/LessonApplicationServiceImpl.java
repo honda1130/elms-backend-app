@@ -12,13 +12,15 @@ import com.everrefine.elms.application.dto.LessonGroupDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
 import com.everrefine.elms.application.dto.LessonPageDto;
 import com.everrefine.elms.application.dto.LessonWithCourseAndLessonGroupDto;
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
-import com.everrefine.elms.domain.model.lesson.LessonTag;
 import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
+import com.everrefine.elms.domain.model.tag.Tag;
+import com.everrefine.elms.domain.model.tag.TagName;
 import com.everrefine.elms.domain.repository.CourseRepository;
 import com.everrefine.elms.domain.repository.LessonGroupRepository;
 import com.everrefine.elms.domain.repository.LessonRepository;
@@ -32,8 +34,10 @@ import java.io.PrintWriter;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
@@ -170,24 +174,38 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   @Override
   @Transactional
   public LessonDto updateLesson(LessonUpdateCommand lessonUpdateCommand) {
+    List<String> tagNames =
+        lessonUpdateCommand.tags().stream().map(name -> new TagName(name).value()).toList();
+    throwExceptionIfTagNamesDuplicated(tagNames);
+
     Lesson currentLesson = findLessonOrThrow(lessonUpdateCommand.id());
     Lesson updatedLesson =
         lessonRepository.updateLesson(lessonUpdateCommand.toLesson(currentLesson));
 
     lessonTagRepository.deleteByLessonId(updatedLesson.id());
 
-    for (String tagName : lessonUpdateCommand.tags()) {
-      LessonTag tag =
-          tagRepository.findByName(tagName)
-              .orElseGet(
-                  () -> tagRepository.createTag(tagName));
+    Map<String, Tag> tagByName =
+        tagRepository.findByNameIn(tagNames).stream()
+            .collect(Collectors.toMap(Tag::name, Function.identity()));
+    List<String> newTagNames =
+        tagNames.stream().filter(tagName -> !tagByName.containsKey(tagName)).toList();
+    tagRepository.createTags(newTagNames).forEach(tag -> tagByName.put(tag.name(), tag));
 
-      lessonTagRepository.createLessonTag(updatedLesson.id(), tag.id());
-    }
-
-    List<LessonTag> tags = tagRepository.findByLessonId(updatedLesson.id());
+    List<Tag> tags =
+        tagNames.stream()
+            .map(tagByName::get)
+            .filter(Objects::nonNull)
+            .sorted(Comparator.comparing(Tag::name))
+            .toList();
+    lessonTagRepository.createLessonTags(updatedLesson.id(), tags.stream().map(Tag::id).toList());
 
     return LessonDto.from(updatedLesson, tags);
+  }
+
+  private void throwExceptionIfTagNamesDuplicated(List<String> tagNames) {
+    if (tagNames.size() != tagNames.stream().distinct().count()) {
+      throw new BadRequestException("タグ名は重複しないように入力してください");
+    }
   }
 
   @Override
