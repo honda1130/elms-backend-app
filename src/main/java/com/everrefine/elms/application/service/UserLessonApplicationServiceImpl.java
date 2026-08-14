@@ -9,13 +9,16 @@ import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
 import com.everrefine.elms.domain.model.lesson.LessonInGroup;
+import com.everrefine.elms.domain.model.tag.Tag;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.CourseRepository;
 import com.everrefine.elms.domain.repository.LessonRepository;
+import com.everrefine.elms.domain.repository.LessonTagRepository;
 import com.everrefine.elms.domain.repository.UserLessonRepository;
 import com.everrefine.elms.domain.repository.UserRepository;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -32,6 +35,7 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
   private final UserRepository userRepository;
   private final UserLessonRepository userLessonRepository;
   private final CourseRepository courseRepository;
+  private final LessonTagRepository lessonTagRepository;
 
   @Override
   @Transactional(readOnly = true)
@@ -39,9 +43,10 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
       UUID userId, UUID courseId, UUID lessonGroupId, UUID lessonId) {
     Lesson lesson =
         findLessonBelongingToCourseAndLessonGroupOrThrow(lessonId, courseId, lessonGroupId);
+    List<Tag> tags = lessonTagRepository.findTagsByLessonId(lessonId);
     boolean isLessonCompleted =
         userLessonRepository.findByUserIdAndLessonId(userId, lessonId).isPresent();
-    return UserLessonDetailDto.from(lesson, isLessonCompleted);
+    return UserLessonDetailDto.from(lesson, tags, isLessonCompleted);
   }
 
   @Override
@@ -136,8 +141,11 @@ public class UserLessonApplicationServiceImpl implements UserLessonApplicationSe
             ? Collections.emptySet()
             : userLessonRepository.findLessonIdByUserIdAndLessonIdIn(userId, lessonIds);
 
+    Map<UUID, List<Tag>> tagsByLessonId =
+        lessonTagRepository.findTagsByLessonIdIn(lessonIds.stream().toList());
+
     return lessonGroups.stream()
-        .map(group -> UserLessonGroupDto.from(group, completedLessonIds))
+        .map(group -> UserLessonGroupDto.from(group, completedLessonIds, tagsByLessonId))
         .toList();
   }
 }

@@ -1,10 +1,12 @@
 package com.everrefine.elms.application.dto;
 
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
+import com.everrefine.elms.domain.model.tag.Tag;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 
@@ -27,12 +29,29 @@ public record UserLessonGroupDto(
    */
   public static UserLessonGroupDto from(
       LessonGroupWithLessons group, Set<UUID> completedLessonIds) {
+    return from(group, completedLessonIds, Map.of());
+  }
+
+  /**
+   * レッスングループと配下レッスンの読み取りモデル、完了済みレッスンID、レッスンIDごとのタグ情報から UserLessonGroupDtoを生成する。
+   *
+   * @param group レッスングループと配下レッスンの読み取りモデル
+   * @param completedLessonIds 受講完了済みのレッスンID集合
+   * @param tagsByLessonId レッスンIDごとのタグ情報
+   * @return ユーザーレッスングループDTO
+   */
+  public static UserLessonGroupDto from(
+      LessonGroupWithLessons group,
+      Set<UUID> completedLessonIds,
+      Map<UUID, List<Tag>> tagsByLessonId) {
     List<UserLessonDto> userLessons =
         group.lessons().stream()
             .map(
                 lesson ->
                     new UserLessonDto(
-                        LessonDto.from(group, lesson), completedLessonIds.contains(lesson.id())))
+                        LessonDto.from(
+                            group, lesson, tagsByLessonId.getOrDefault(lesson.id(), List.of())),
+                        completedLessonIds.contains(lesson.id())))
             .toList();
     return new UserLessonGroupDto(
         group.id(),

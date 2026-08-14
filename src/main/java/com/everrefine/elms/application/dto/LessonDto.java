@@ -56,13 +56,25 @@ public record LessonDto(
    * @return レッスンDTO
    */
   public static LessonDto from(LessonGroupWithLessons group, LessonInGroup lesson) {
+    return from(group, lesson, List.of());
+  }
+
+  /**
+   * レッスングループと配下レッスンの読み取りモデル、タグ情報からLessonDtoを生成する。
+   *
+   * @param group 所属するレッスングループの読み取りモデル
+   * @param lesson レッスングループ配下のレッスン読み取りモデル
+   * @param tags タグ情報
+   * @return レッスンDTO
+   */
+  public static LessonDto from(LessonGroupWithLessons group, LessonInGroup lesson, List<Tag> tags) {
     return new LessonDto(
         lesson.id(),
         group.id(),
         group.courseId(),
         lesson.lessonOrder(),
         lesson.title(),
-        List.of(),
+        tags.stream().map(LessonTagDto::from).toList(),
         lesson.content(),
         lesson.videoUrl(),
         lesson.createdAt(),

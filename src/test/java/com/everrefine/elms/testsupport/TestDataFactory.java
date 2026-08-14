@@ -4,6 +4,7 @@ import static com.everrefine.elms.domain.model.user.Password.encryptAndCreate;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Component;
@@ -189,5 +190,34 @@ public class TestDataFactory {
         lessonId,
         LocalDateTime.now(),
         LocalDateTime.now());
+  }
+
+  /**
+   * タグを作成する。
+   *
+   * @param name タグ名
+   * @return 作成されたタグID
+   */
+  public UUID createTag(String name) {
+    List<UUID> existingTagIds =
+        jdbcTemplate.queryForList("SELECT id FROM tags WHERE name = ?", UUID.class, name);
+    if (!existingTagIds.isEmpty()) {
+      return existingTagIds.getFirst();
+    }
+
+    UUID tagId = UUID.randomUUID();
+    jdbcTemplate.update("INSERT INTO tags (id, name) VALUES (?, ?)", tagId, name);
+    return tagId;
+  }
+
+  /**
+   * レッスンとタグの紐付けを作成する。
+   *
+   * @param lessonId レッスンID
+   * @param tagId タグID
+   */
+  public void createLessonTag(UUID lessonId, UUID tagId) {
+    jdbcTemplate.update(
+        "INSERT INTO lesson_tags (lesson_id, tag_id) VALUES (?, ?)", lessonId, tagId);
   }
 }

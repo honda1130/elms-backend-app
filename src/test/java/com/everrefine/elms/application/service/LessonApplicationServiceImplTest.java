@@ -111,6 +111,27 @@ public class LessonApplicationServiceImplTest {
       assertEquals("https://example.com/video.mp4", result.videoUrl());
       assertNotNull(result.createdAt());
       assertNotNull(result.updatedAt());
+      assertTrue(result.tags().isEmpty());
+    }
+
+    @Test
+    void レッスンをIDで取得すると紐づくタグも返ること() {
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "タグ取得コース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "タグ取得グループ");
+      UUID lessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1"), "タグ付きレッスン", "説明", null);
+      UUID springTagId = testData.createTag("Spring");
+      UUID javaTagId = testData.createTag("Java");
+      testData.createLessonTag(lessonId, springTagId);
+      testData.createLessonTag(lessonId, javaTagId);
+
+      LessonDto result = lessonApplicationService.findLessonById(courseId, lessonGroupId, lessonId);
+
+      assertEquals(
+          List.of("Java", "Spring"), result.tags().stream().map(tag -> tag.name()).toList());
+      assertEquals(
+          List.of(javaTagId, springTagId), result.tags().stream().map(tag -> tag.id()).toList());
     }
 
     @Test
@@ -205,6 +226,38 @@ public class LessonApplicationServiceImplTest {
       // Assert
       assertNotNull(result);
       assertNotNull(result.lessonGroups());
+    }
+
+    @Test
+    void コース別レッスン一覧で各レッスンのタグも返ること() {
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "一覧タグ取得コース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "一覧タグ取得グループ");
+      UUID taggedLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1"), "一覧タグ付きレッスン", "説明", null);
+      UUID taglessLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("2"), "一覧タグなしレッスン", "説明", null);
+      UUID javaTagId = testData.createTag("Java");
+      testData.createLessonTag(taggedLessonId, javaTagId);
+
+      CourseLessonsDto result = lessonApplicationService.findLessonsGroupedByLessonGroup(courseId);
+
+      LessonDto taggedLesson =
+          result.lessonGroups().getFirst().lessons().stream()
+              .filter(lesson -> lesson.id().equals(taggedLessonId))
+              .findFirst()
+              .orElseThrow();
+      LessonDto taglessLesson =
+          result.lessonGroups().getFirst().lessons().stream()
+              .filter(lesson -> lesson.id().equals(taglessLessonId))
+              .findFirst()
+              .orElseThrow();
+
+      assertEquals(1, taggedLesson.tags().size());
+      assertEquals(javaTagId, taggedLesson.tags().getFirst().id());
+      assertEquals("Java", taggedLesson.tags().getFirst().name());
+      assertTrue(taglessLesson.tags().isEmpty());
     }
   }
 
