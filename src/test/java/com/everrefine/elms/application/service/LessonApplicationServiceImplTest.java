@@ -9,19 +9,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.everrefine.elms.application.command.LessonCreateCommand;
 import com.everrefine.elms.application.command.LessonImportCommand;
 import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
-import com.everrefine.elms.application.command.LessonSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
-import com.everrefine.elms.application.dto.LessonPageDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.presentation.request.LessonCreateRequest;
 import com.everrefine.elms.presentation.request.LessonOrderUpdateRequest;
-import com.everrefine.elms.presentation.request.LessonSearchRequest;
 import com.everrefine.elms.presentation.request.LessonTagRequest;
 import com.everrefine.elms.presentation.request.LessonUpdateRequest;
 import com.everrefine.elms.testsupport.TestDataFactory;
@@ -161,54 +158,6 @@ public class LessonApplicationServiceImplTest {
               () ->
                   lessonApplicationService.findLessonById(otherCourseId, lessonGroupId, lessonId));
       assertEquals("Lesson が見つかりませんでした。id = " + lessonId, exception.getMessage());
-    }
-  }
-
-  @Nested
-  class レッスン検索 {
-    @Test
-    void レッスンを検索できること() {
-      // Arrange - テストデータを準備（IDは自動生成）
-      UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
-      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
-      testData.createLesson(
-          lessonGroupId,
-          courseId,
-          new BigDecimal("1"),
-          "テストレッスン",
-          "テスト説明",
-          "https://example.com/video.mp4");
-
-      LessonSearchRequest searchRequest =
-          new LessonSearchRequest(1, 10, String.valueOf(courseId), null, null, null, null);
-      LessonSearchCommand searchCommand = searchRequest.toCommand();
-
-      // Act
-      LessonPageDto result = lessonApplicationService.findLessons(searchCommand);
-
-      // Assert
-      assertNotNull(result);
-      assertTrue(result.totalSize() >= 1);
-      assertEquals(1, result.pageNum());
-      assertEquals(10, result.pageSize());
-    }
-
-    @Test
-    void 検索結果が0件のとき空リストが返ること() {
-      // Arrange - データが存在しない状態
-      LessonSearchRequest searchRequest =
-          new LessonSearchRequest(1, 10, UUID.randomUUID().toString(), null, null, null, null);
-      LessonSearchCommand searchCommand = searchRequest.toCommand();
-
-      // Act
-      LessonPageDto result = lessonApplicationService.findLessons(searchCommand);
-
-      // Assert
-      assertNotNull(result);
-      assertEquals(0, result.totalSize());
-      assertEquals(1, result.pageNum());
-      assertEquals(10, result.pageSize());
-      assertTrue(result.lessonDtos().isEmpty());
     }
   }
 

@@ -25,7 +25,7 @@ public record UserLessonDetailDto(
     @Schema(
             description = "レッスンタグ",
             example = "[{\"id\":\"550e8400-e29b-41d4-a716-446655440000\",\"name\":\"Java\"}]")
-        List<LessonTagDto> tags,
+        List<TagDto> tags,
     @Schema(description = "レッスン完了フラグ（true: 完了, false: 未完了）", example = "false")
         @JsonProperty("isLessonCompleted")
         boolean lessonCompleted) {
@@ -60,7 +60,7 @@ public record UserLessonDetailDto(
         lesson.videoUrl() != null ? lesson.videoUrl().value() : null,
         lesson.createdAt(),
         lesson.updatedAt(),
-        tags.stream().map(LessonTagDto::from).toList(),
+        tags.stream().map(TagDto::from).toList(),
         isLessonCompleted);
   }
 }

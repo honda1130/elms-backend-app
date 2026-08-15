@@ -20,7 +20,7 @@ public record LessonDto(
     @Schema(
             description = "レッスンタグ",
             example = "[{\"id\":\"550e8400-e29b-41d4-a716-446655440000\",\"name\":\"Java\"}]")
-        List<LessonTagDto> tags,
+        List<TagDto> tags,
     @Schema(description = "レッスン本文（Markdown対応）", example = "## 変数とは\n変数はデータを格納する箱です。")
         String content,
     @Schema(description = "動画URL", example = "https://example.com/videos/lesson1.mp4")
@@ -74,7 +74,7 @@ public record LessonDto(
         group.courseId(),
         lesson.lessonOrder(),
         lesson.title(),
-        tags.stream().map(LessonTagDto::from).toList(),
+        tags.stream().map(TagDto::from).toList(),
         lesson.content(),
         lesson.videoUrl(),
         lesson.createdAt(),
@@ -95,7 +95,7 @@ public record LessonDto(
         lesson.courseId(),
         lesson.lessonOrder().value(),
         lesson.title().value(),
-        tags.stream().map(LessonTagDto::from).toList(),
+        tags.stream().map(TagDto::from).toList(),
         lesson.content() != null ? lesson.content().value() : null,
         lesson.videoUrl() != null ? lesson.videoUrl().value() : null,
         lesson.createdAt(),
