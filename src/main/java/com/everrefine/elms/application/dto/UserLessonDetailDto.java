@@ -1,10 +1,12 @@
 package com.everrefine.elms.application.dto;
 
 import com.everrefine.elms.domain.model.lesson.Lesson;
+import com.everrefine.elms.domain.model.tag.Tag;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 /** ユーザーレッスン詳細。 */
@@ -20,6 +22,10 @@ public record UserLessonDetailDto(
         String videoUrl,
     @Schema(description = "登録日時", example = "2024-01-01T09:00:00") LocalDateTime createdAt,
     @Schema(description = "更新日時", example = "2024-06-01T10:30:00") LocalDateTime updatedAt,
+    @Schema(
+            description = "レッスンタグ",
+            example = "[{\"id\":\"550e8400-e29b-41d4-a716-446655440000\",\"name\":\"Java\"}]")
+        List<TagDto> tags,
     @Schema(description = "レッスン完了フラグ（true: 完了, false: 未完了）", example = "false")
         @JsonProperty("isLessonCompleted")
         boolean lessonCompleted) {
@@ -32,6 +38,18 @@ public record UserLessonDetailDto(
    * @return ユーザーレッスン詳細DTO
    */
   public static UserLessonDetailDto from(Lesson lesson, boolean isLessonCompleted) {
+    return from(lesson, List.of(), isLessonCompleted);
+  }
+
+  /**
+   * Lessonエンティティとタグ情報からUserLessonDetailDtoを生成する。
+   *
+   * @param lesson レッスンエンティティ
+   * @param tags タグ情報
+   * @param isLessonCompleted レッスン完了フラグ
+   * @return ユーザーレッスン詳細DTO
+   */
+  public static UserLessonDetailDto from(Lesson lesson, List<Tag> tags, boolean isLessonCompleted) {
     return new UserLessonDetailDto(
         lesson.id(),
         lesson.lessonGroupId(),
@@ -42,6 +60,7 @@ public record UserLessonDetailDto(
         lesson.videoUrl() != null ? lesson.videoUrl().value() : null,
         lesson.createdAt(),
         lesson.updatedAt(),
+        tags.stream().map(TagDto::from).toList(),
         isLessonCompleted);
   }
 }

@@ -3,12 +3,10 @@ package com.everrefine.elms.application.service;
 import com.everrefine.elms.application.command.LessonCreateCommand;
 import com.everrefine.elms.application.command.LessonImportCommand;
 import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
-import com.everrefine.elms.application.command.LessonSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
-import com.everrefine.elms.application.dto.LessonPageDto;
 import java.util.UUID;
 import org.springframework.core.io.Resource;
 
@@ -24,14 +22,6 @@ public interface LessonApplicationService {
    * @return レッスンDTO
    */
   LessonDto findLessonById(UUID courseId, UUID lessonGroupId, UUID lessonId);
-
-  /**
-   * レッスン一覧をページング取得する。
-   *
-   * @param lessonSearchCommand レッスン検索Command
-   * @return レッスンページDTO
-   */
-  LessonPageDto findLessons(LessonSearchCommand lessonSearchCommand);
 
   /**
    * コースIDに紐づくレッスンをレッスングループごとにまとめて取得する。

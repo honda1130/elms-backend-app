@@ -9,19 +9,16 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.everrefine.elms.application.command.LessonCreateCommand;
 import com.everrefine.elms.application.command.LessonImportCommand;
 import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
-import com.everrefine.elms.application.command.LessonSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
-import com.everrefine.elms.application.dto.LessonPageDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.presentation.request.LessonCreateRequest;
 import com.everrefine.elms.presentation.request.LessonOrderUpdateRequest;
-import com.everrefine.elms.presentation.request.LessonSearchRequest;
 import com.everrefine.elms.presentation.request.LessonTagRequest;
 import com.everrefine.elms.presentation.request.LessonUpdateRequest;
 import com.everrefine.elms.testsupport.TestDataFactory;
@@ -111,6 +108,27 @@ public class LessonApplicationServiceImplTest {
       assertEquals("https://example.com/video.mp4", result.videoUrl());
       assertNotNull(result.createdAt());
       assertNotNull(result.updatedAt());
+      assertTrue(result.tags().isEmpty());
+    }
+
+    @Test
+    void レッスンをIDで取得すると紐づくタグも返ること() {
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "タグ取得コース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "タグ取得グループ");
+      UUID lessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1"), "タグ付きレッスン", "説明", null);
+      UUID springTagId = testData.createTag("Spring");
+      UUID javaTagId = testData.createTag("Java");
+      testData.createLessonTag(lessonId, springTagId);
+      testData.createLessonTag(lessonId, javaTagId);
+
+      LessonDto result = lessonApplicationService.findLessonById(courseId, lessonGroupId, lessonId);
+
+      assertEquals(
+          List.of("Java", "Spring"), result.tags().stream().map(tag -> tag.name()).toList());
+      assertEquals(
+          List.of(javaTagId, springTagId), result.tags().stream().map(tag -> tag.id()).toList());
     }
 
     @Test
@@ -144,54 +162,6 @@ public class LessonApplicationServiceImplTest {
   }
 
   @Nested
-  class レッスン検索 {
-    @Test
-    void レッスンを検索できること() {
-      // Arrange - テストデータを準備（IDは自動生成）
-      UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");
-      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "テストグループ");
-      testData.createLesson(
-          lessonGroupId,
-          courseId,
-          new BigDecimal("1"),
-          "テストレッスン",
-          "テスト説明",
-          "https://example.com/video.mp4");
-
-      LessonSearchRequest searchRequest =
-          new LessonSearchRequest(1, 10, String.valueOf(courseId), null, null, null, null);
-      LessonSearchCommand searchCommand = searchRequest.toCommand();
-
-      // Act
-      LessonPageDto result = lessonApplicationService.findLessons(searchCommand);
-
-      // Assert
-      assertNotNull(result);
-      assertTrue(result.totalSize() >= 1);
-      assertEquals(1, result.pageNum());
-      assertEquals(10, result.pageSize());
-    }
-
-    @Test
-    void 検索結果が0件のとき空リストが返ること() {
-      // Arrange - データが存在しない状態
-      LessonSearchRequest searchRequest =
-          new LessonSearchRequest(1, 10, UUID.randomUUID().toString(), null, null, null, null);
-      LessonSearchCommand searchCommand = searchRequest.toCommand();
-
-      // Act
-      LessonPageDto result = lessonApplicationService.findLessons(searchCommand);
-
-      // Assert
-      assertNotNull(result);
-      assertEquals(0, result.totalSize());
-      assertEquals(1, result.pageNum());
-      assertEquals(10, result.pageSize());
-      assertTrue(result.lessonDtos().isEmpty());
-    }
-  }
-
-  @Nested
   class コース別レッスン一覧取得 {
     @Test
     void コース別レッスン一覧を取得できること() {
@@ -205,6 +175,38 @@ public class LessonApplicationServiceImplTest {
       // Assert
       assertNotNull(result);
       assertNotNull(result.lessonGroups());
+    }
+
+    @Test
+    void コース別レッスン一覧で各レッスンのタグも返ること() {
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "一覧タグ取得コース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "一覧タグ取得グループ");
+      UUID taggedLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1"), "一覧タグ付きレッスン", "説明", null);
+      UUID taglessLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("2"), "一覧タグなしレッスン", "説明", null);
+      UUID javaTagId = testData.createTag("Java");
+      testData.createLessonTag(taggedLessonId, javaTagId);
+
+      CourseLessonsDto result = lessonApplicationService.findLessonsGroupedByLessonGroup(courseId);
+
+      LessonDto taggedLesson =
+          result.lessonGroups().getFirst().lessons().stream()
+              .filter(lesson -> lesson.id().equals(taggedLessonId))
+              .findFirst()
+              .orElseThrow();
+      LessonDto taglessLesson =
+          result.lessonGroups().getFirst().lessons().stream()
+              .filter(lesson -> lesson.id().equals(taglessLessonId))
+              .findFirst()
+              .orElseThrow();
+
+      assertEquals(1, taggedLesson.tags().size());
+      assertEquals(javaTagId, taggedLesson.tags().getFirst().id());
+      assertEquals("Java", taggedLesson.tags().getFirst().name());
+      assertTrue(taglessLesson.tags().isEmpty());
     }
   }
 

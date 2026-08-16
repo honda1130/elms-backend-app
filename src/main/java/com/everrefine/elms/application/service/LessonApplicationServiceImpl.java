@@ -4,13 +4,11 @@ import com.everrefine.elms.application.command.LessonCreateCommand;
 import com.everrefine.elms.application.command.LessonImportCommand;
 import com.everrefine.elms.application.command.LessonImportRowCommand;
 import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
-import com.everrefine.elms.application.command.LessonSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonGroupDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
-import com.everrefine.elms.application.dto.LessonPageDto;
 import com.everrefine.elms.application.dto.LessonWithCourseAndLessonGroupDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
@@ -18,6 +16,7 @@ import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
+import com.everrefine.elms.domain.model.lesson.LessonInGroup;
 import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
 import com.everrefine.elms.domain.model.tag.Tag;
 import com.everrefine.elms.domain.model.tag.TagName;
@@ -84,19 +83,8 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   @Transactional(readOnly = true)
   public LessonDto findLessonById(UUID courseId, UUID lessonGroupId, UUID lessonId) {
     Lesson lesson = findLessonBelongingToCourseAndGroupOrThrow(lessonId, courseId, lessonGroupId);
-    return LessonDto.from(lesson);
-  }
-
-  @Override
-  @Transactional(readOnly = true)
-  public LessonPageDto findLessons(LessonSearchCommand lessonSearchCommand) {
-    List<Lesson> lessons = lessonRepository.findLessons(lessonSearchCommand.toCriteria());
-    int totalSize = lessonRepository.countLessons(lessonSearchCommand.toCriteria());
-
-    List<LessonDto> lessonDtos = lessons.stream().map(LessonDto::from).toList();
-
-    return LessonPageDto.from(
-        lessonDtos, lessonSearchCommand.pageNum(), lessonSearchCommand.pageSize(), totalSize);
+    List<Tag> tags = lessonTagRepository.findTagsByLessonId(lessonId);
+    return LessonDto.from(lesson, tags);
   }
 
   /**
@@ -133,7 +121,15 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   public CourseLessonsDto findLessonsGroupedByLessonGroup(UUID courseId) {
     List<LessonGroupWithLessons> lessonGroups =
         lessonRepository.findLessonsGroupedByLessonGroup(courseId);
-    List<LessonGroupDto> lessonGroupDtos = lessonGroups.stream().map(LessonGroupDto::from).toList();
+    List<UUID> lessonIds =
+        lessonGroups.stream()
+            .flatMap(group -> group.lessons().stream())
+            .map(LessonInGroup::id)
+            .distinct()
+            .toList();
+    Map<UUID, List<Tag>> tagsByLessonId = lessonTagRepository.findTagsByLessonIdIn(lessonIds);
+    List<LessonGroupDto> lessonGroupDtos =
+        lessonGroups.stream().map(group -> LessonGroupDto.from(group, tagsByLessonId)).toList();
     return new CourseLessonsDto(courseId, lessonGroupDtos);
   }
 
