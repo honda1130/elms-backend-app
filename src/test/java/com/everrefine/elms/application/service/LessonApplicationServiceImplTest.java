@@ -1089,8 +1089,7 @@ ORDER BY g.lesson_group_order ASC, l.lesson_order ASC
     void 並び替え後のレスポンスに対象レッスンのタグが返ること() {
       // Arrange - テストデータを準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "並び替えタグコース", "コース説明");
-      UUID lessonGroupId =
-          testData.createLessonGroup(courseId, new BigDecimal("1"), "並び替えタググループ");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "並び替えタググループ");
 
       UUID lesson1Id =
           testData.createLesson(

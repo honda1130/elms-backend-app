@@ -5,9 +5,7 @@ import java.math.BigDecimal;
 import java.util.List;
 import java.util.UUID;
 
-/**
- * レッスン作成用のコマンド。
- */
+/** レッスン作成用のコマンド。 */
 public record LessonCreateCommand(
     UUID courseId,
     UUID lessonGroupId,
@@ -15,8 +13,7 @@ public record LessonCreateCommand(
     String content,
     String videoUrl,
     BigDecimal lessonOrder,
-    List<String> tags
-) {
+    List<String> tags) {
 
   /**
    * Lessonエンティティに変換する。

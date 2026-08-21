@@ -30,7 +30,7 @@ public record LessonCreateRequest(
   /**
    * Commandオブジェクトに変換する。
    *
-   * @param courseId      コースID
+   * @param courseId コースID
    * @param lessonGroupId レッスングループID
    * @return レッスン作成Command
    */

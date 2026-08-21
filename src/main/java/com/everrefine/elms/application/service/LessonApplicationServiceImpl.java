@@ -46,9 +46,7 @@ import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/**
- * レッスンアプリケーションサービスの実装。
- */
+/** レッスンアプリケーションサービスの実装。 */
 @Service
 @AllArgsConstructor
 public class LessonApplicationServiceImpl implements LessonApplicationService {
@@ -92,8 +90,8 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   /**
    * コースとレッスングループに属するレッスンを取得する。存在しない場合は例外をスローする。
    *
-   * @param lessonId      レッスンID
-   * @param courseId      コースID
+   * @param lessonId レッスンID
+   * @param courseId コースID
    * @param lessonGroupId レッスングループID
    * @return レッスンエンティティ
    */
@@ -148,19 +146,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
         lessonDomainService.issueLessonOrder(lessonCreateCommand.lessonGroupId());
     Lesson createdLesson = lessonRepository.createLesson(lessonCreateCommand.toLesson(lessonOrder));
 
-    Map<TagName, Tag> tagByName =
-        tagRepository.findByNameIn(tagNames).stream()
-            .collect(Collectors.toMap(Tag::tagName, Function.identity()));
-    List<TagName> newTagNames =
-        tagNames.stream().filter(tagName -> !tagByName.containsKey(tagName)).toList();
-    tagRepository.createTags(newTagNames).forEach(tag -> tagByName.put(tag.tagName(), tag));
-
-    List<Tag> tags =
-        tagNames.stream()
-            .map(tagByName::get)
-            .filter(Objects::nonNull)
-            .sorted(Comparator.comparing(Tag::name))
-            .toList();
+    List<Tag> tags = resolveOrCreateTags(tagNames);
     lessonTagRepository.createLessonTags(createdLesson.id(), tags.stream().map(Tag::id).toList());
 
     return LessonDto.from(createdLesson, tags);
@@ -172,7 +158,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
    * <p>検証しないまま登録すると外部キー制約違反となり、クライアント起因の誤りが500として返ってしまう。
    *
    * @param lessonGroupId レッスングループID
-   * @param courseId      コースID
+   * @param courseId コースID
    */
   private void throwExceptionIfLessonGroupNotBelongsToCourse(UUID lessonGroupId, UUID courseId) {
     LessonGroup lessonGroup =
@@ -200,6 +186,13 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
 
     lessonTagRepository.deleteByLessonId(updatedLesson.id());
 
+    List<Tag> tags = resolveOrCreateTags(tagNames);
+    lessonTagRepository.createLessonTags(updatedLesson.id(), tags.stream().map(Tag::id).toList());
+
+    return LessonDto.from(updatedLesson, tags);
+  }
+
+  private List<Tag> resolveOrCreateTags(List<TagName> tagNames) {
     Map<TagName, Tag> tagByName =
         tagRepository.findByNameIn(tagNames).stream()
             .collect(Collectors.toMap(Tag::tagName, Function.identity()));
@@ -207,15 +200,11 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
         tagNames.stream().filter(tagName -> !tagByName.containsKey(tagName)).toList();
     tagRepository.createTags(newTagNames).forEach(tag -> tagByName.put(tag.tagName(), tag));
 
-    List<Tag> tags =
-        tagNames.stream()
-            .map(tagByName::get)
-            .filter(Objects::nonNull)
-            .sorted(Comparator.comparing(Tag::name))
-            .toList();
-    lessonTagRepository.createLessonTags(updatedLesson.id(), tags.stream().map(Tag::id).toList());
-
-    return LessonDto.from(updatedLesson, tags);
+    return tagNames.stream()
+        .map(tagByName::get)
+        .filter(Objects::nonNull)
+        .sorted(Comparator.comparing(Tag::name))
+        .toList();
   }
 
   private void throwExceptionIfTagNamesDuplicated(List<TagName> tagNames) {
@@ -235,7 +224,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   /**
    * レッスンIDに対応するレッスン順序を返す。IDがnullの場合はnullを返す。
    *
-   * @param lessonId             レッスンID（nullの場合はnullを返す）
+   * @param lessonId レッスンID（nullの場合はnullを返す）
    * @param lessonIdAndLessonMap レッスンIDとレッスンのMap
    * @return レッスン順序（lessonIdがnullの場合はnull）
    */
@@ -322,7 +311,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
    * <p>レッスングループのIDはアプリケーション側で採番済みのため、登録前に子レッスンへ紐づけられる。
    * これによりレッスングループを1件ずつINSERTする必要がなく、親子それぞれ1回の一括登録で完結する。
    *
-   * @param courseId               コースID
+   * @param courseId コースID
    * @param rowsByLessonGroupTitle レッスングループタイトルごとのCSV行
    */
   private void importLessonGroupsAndLessons(
@@ -370,8 +359,7 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   public Resource exportAllLessonsCsv() {
 
     String[] header = {
-        "コースID", "コース名", "レッスングループID", "レッスングループ名", "レッスンID",
-        "レッスンタイトル", "レッスンの動画URL"
+      "コースID", "コース名", "レッスングループID", "レッスングループ名", "レッスンID", "レッスンタイトル", "レッスンの動画URL"
     };
 
     List<LessonWithCourseAndLessonGroup> allLessons = lessonRepository.findAllLessons();
@@ -395,10 +383,10 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
     ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
     try (
-        // 書き込むファイルを作成
-        PrintWriter file =
-            new PrintWriter(
-                new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8)));) {
+    // 書き込むファイルを作成
+    PrintWriter file =
+        new PrintWriter(
+            new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))); ) {
       // Excelで開いたときの文字化けを防ぐ
       file.print('\uFEFF');
 
@@ -408,13 +396,13 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
       // 中身をセットする ( 1レッスンごとに改行 )
       for (LessonWithCourseAndLessonGroupDto dto : dtos) {
         String[] lessons = {
-            escape(String.valueOf(dto.courseId())),
-            escape(dto.courseTitle()),
-            escape(String.valueOf(dto.lessonGroupId())),
-            escape(dto.lessonGroupTitle()),
-            escape(String.valueOf(dto.lessonId())),
-            escape(dto.lessonTitle()),
-            escape(dto.videoUrl())
+          escape(String.valueOf(dto.courseId())),
+          escape(dto.courseTitle()),
+          escape(String.valueOf(dto.lessonGroupId())),
+          escape(dto.lessonGroupTitle()),
+          escape(String.valueOf(dto.lessonId())),
+          escape(dto.lessonTitle()),
+          escape(dto.videoUrl())
         };
         file.println(String.join(",", lessons));
       }
