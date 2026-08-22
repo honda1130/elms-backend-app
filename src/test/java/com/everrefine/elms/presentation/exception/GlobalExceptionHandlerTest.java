@@ -188,7 +188,7 @@ public class GlobalExceptionHandlerTest {
                       courseId,
                       MISSING_ID)
                   .contentType(MediaType.APPLICATION_JSON)
-                  .content("{\"title\":\"レッスン\",\"content\":\"本文\",\"videoUrl\":null}"))
+                  .content("{\"title\":\"レッスン\",\"content\":\"本文\",\"videoUrl\":null,\"tags\":[]}"))
           .andExpect(status().isNotFound());
     }
 
