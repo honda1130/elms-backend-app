@@ -2,6 +2,7 @@ package com.everrefine.elms.application.command;
 
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import java.math.BigDecimal;
+import java.util.List;
 import java.util.UUID;
 
 /** レッスン作成用のコマンド。 */
@@ -11,7 +12,8 @@ public record LessonCreateCommand(
     String title,
     String content,
     String videoUrl,
-    BigDecimal lessonOrder) {
+    BigDecimal lessonOrder,
+    List<String> tags) {
 
   /**
    * Lessonエンティティに変換する。

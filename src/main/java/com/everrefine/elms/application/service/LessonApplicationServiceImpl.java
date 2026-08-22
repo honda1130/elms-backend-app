@@ -139,10 +139,17 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
     throwExceptionIfLessonGroupNotBelongsToCourse(
         lessonCreateCommand.lessonGroupId(), lessonCreateCommand.courseId());
 
+    List<TagName> tagNames = lessonCreateCommand.tags().stream().map(TagName::new).toList();
+    throwExceptionIfTagNamesDuplicated(tagNames);
+
     BigDecimal lessonOrder =
         lessonDomainService.issueLessonOrder(lessonCreateCommand.lessonGroupId());
     Lesson createdLesson = lessonRepository.createLesson(lessonCreateCommand.toLesson(lessonOrder));
-    return LessonDto.from(createdLesson);
+
+    List<Tag> tags = resolveOrCreateTags(tagNames);
+    lessonTagRepository.createLessonTags(createdLesson.id(), tags.stream().map(Tag::id).toList());
+
+    return LessonDto.from(createdLesson, tags);
   }
 
   /**
@@ -179,6 +186,13 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
 
     lessonTagRepository.deleteByLessonId(updatedLesson.id());
 
+    List<Tag> tags = resolveOrCreateTags(tagNames);
+    lessonTagRepository.createLessonTags(updatedLesson.id(), tags.stream().map(Tag::id).toList());
+
+    return LessonDto.from(updatedLesson, tags);
+  }
+
+  private List<Tag> resolveOrCreateTags(List<TagName> tagNames) {
     Map<TagName, Tag> tagByName =
         tagRepository.findByNameIn(tagNames).stream()
             .collect(Collectors.toMap(Tag::tagName, Function.identity()));
@@ -186,15 +200,11 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
         tagNames.stream().filter(tagName -> !tagByName.containsKey(tagName)).toList();
     tagRepository.createTags(newTagNames).forEach(tag -> tagByName.put(tag.tagName(), tag));
 
-    List<Tag> tags =
-        tagNames.stream()
-            .map(tagByName::get)
-            .filter(Objects::nonNull)
-            .sorted(Comparator.comparing(Tag::name))
-            .toList();
-    lessonTagRepository.createLessonTags(updatedLesson.id(), tags.stream().map(Tag::id).toList());
-
-    return LessonDto.from(updatedLesson, tags);
+    return tagNames.stream()
+        .map(tagByName::get)
+        .filter(Objects::nonNull)
+        .sorted(Comparator.comparing(Tag::name))
+        .toList();
   }
 
   private void throwExceptionIfTagNamesDuplicated(List<TagName> tagNames) {
@@ -266,7 +276,8 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
     Lesson updatedLesson = targetLesson.updateOrder(newOrder);
     Lesson savedLesson = lessonRepository.updateLesson(updatedLesson);
 
-    return LessonDto.from(savedLesson);
+    List<Tag> tags = lessonTagRepository.findTagsByLessonId(savedLesson.id());
+    return LessonDto.from(savedLesson, tags);
   }
 
   /**
