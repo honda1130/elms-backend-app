@@ -6,17 +6,13 @@ import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonGroupDto;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.course.Course;
-import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
-import com.everrefine.elms.domain.model.tag.Tag;
 import com.everrefine.elms.domain.repository.CourseRepository;
 import com.everrefine.elms.domain.repository.LessonGroupRepository;
 import com.everrefine.elms.domain.repository.LessonRepository;
-import com.everrefine.elms.domain.repository.LessonTagRepository;
 import com.everrefine.elms.domain.service.LessonGroupDomainService;
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -29,7 +25,6 @@ public class LessonGroupApplicationServiceImpl implements LessonGroupApplication
 
   private final LessonGroupRepository lessonGroupRepository;
   private final LessonRepository lessonRepository;
-  private final LessonTagRepository lessonTagRepository;
   private final CourseRepository courseRepository;
   private final LessonGroupDomainService lessonGroupDomainService;
 
@@ -73,14 +68,9 @@ public class LessonGroupApplicationServiceImpl implements LessonGroupApplication
         lessonGroupRepository.updateLessonGroup(
             lessonGroupUpdateCommand.toLessonGroup(lessonGroup));
 
-    List<Lesson> lessons = lessonRepository.findLessonsByLessonGroupId(persistedLessonGroup.id());
-    List<UUID> lessonIds = lessons.stream().map(Lesson::id).toList();
-    Map<UUID, List<Tag>> tagsByLessonId = lessonTagRepository.findTagsByLessonIdIn(lessonIds);
     List<LessonDto> lessonDtos =
-        lessons.stream()
-            .map(
-                lesson ->
-                    LessonDto.from(lesson, tagsByLessonId.getOrDefault(lesson.id(), List.of())))
+        lessonRepository.findLessonsByLessonGroupId(persistedLessonGroup.id()).stream()
+            .map(LessonDto::from)
             .toList();
 
     return LessonGroupDto.from(persistedLessonGroup, lessonDtos);

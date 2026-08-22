@@ -4,7 +4,6 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.everrefine.elms.application.command.LessonGroupCreateCommand;
 import com.everrefine.elms.application.command.LessonGroupUpdateCommand;
@@ -14,7 +13,6 @@ import com.everrefine.elms.presentation.request.LessonGroupCreateRequest;
 import com.everrefine.elms.presentation.request.LessonGroupUpdateRequest;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -129,20 +127,6 @@ class LessonGroupApplicationServiceImplTest {
           "https://example.com/2.mp4",
           now,
           now);
-      UUID lesson1Id =
-          jdbcTemplate.queryForObject(
-              "SELECT id FROM lessons WHERE title = ?", UUID.class, "レッスン1");
-      UUID lesson2Id =
-          jdbcTemplate.queryForObject(
-              "SELECT id FROM lessons WHERE title = ?", UUID.class, "レッスン2");
-      UUID javaTagId = UUID.randomUUID();
-      UUID springTagId = UUID.randomUUID();
-      jdbcTemplate.update("INSERT INTO tags (id, name) VALUES (?, ?)", javaTagId, "Java");
-      jdbcTemplate.update("INSERT INTO tags (id, name) VALUES (?, ?)", springTagId, "Spring");
-      jdbcTemplate.update(
-          "INSERT INTO lesson_tags (lesson_id, tag_id) VALUES (?, ?)", lesson1Id, springTagId);
-      jdbcTemplate.update(
-          "INSERT INTO lesson_tags (lesson_id, tag_id) VALUES (?, ?)", lesson1Id, javaTagId);
 
       LessonGroupUpdateRequest request = new LessonGroupUpdateRequest("新しいタイトル");
       LessonGroupUpdateCommand command = request.toCommand(lessonGroupId);
@@ -161,14 +145,6 @@ class LessonGroupApplicationServiceImplTest {
       assertEquals(2, result.lessons().size());
       assertEquals("レッスン1", result.lessons().get(0).title());
       assertEquals("レッスン2", result.lessons().get(1).title());
-      assertEquals(
-          List.of("Java", "Spring"),
-          result.lessons().get(0).tags().stream().map(tag -> tag.name()).toList());
-      assertEquals(
-          List.of(javaTagId, springTagId),
-          result.lessons().get(0).tags().stream().map(tag -> tag.id()).toList());
-      assertEquals(lesson2Id, result.lessons().get(1).id());
-      assertTrue(result.lessons().get(1).tags().isEmpty());
 
       String updatedTitle =
           jdbcTemplate.queryForObject(

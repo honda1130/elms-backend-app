@@ -29,6 +29,26 @@ public record LessonDto(
     @Schema(description = "更新日時", example = "2024-06-01T10:30:00") LocalDateTime updatedAt) {
 
   /**
+   * LessonエンティティからLessonDtoを生成する。
+   *
+   * @param lesson レッスンエンティティ
+   * @return レッスンDTO
+   */
+  public static LessonDto from(Lesson lesson) {
+    return new LessonDto(
+        lesson.id(),
+        lesson.lessonGroupId(),
+        lesson.courseId(),
+        lesson.lessonOrder().value(),
+        lesson.title().value(),
+        List.of(),
+        lesson.content() != null ? lesson.content().value() : null,
+        lesson.videoUrl() != null ? lesson.videoUrl().value() : null,
+        lesson.createdAt(),
+        lesson.updatedAt());
+  }
+
+  /**
    * レッスングループと配下レッスンの読み取りモデルからLessonDtoを生成する。
    *
    * @param group 所属するレッスングループの読み取りモデル
