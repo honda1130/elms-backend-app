@@ -30,3 +30,9 @@ jobs:
 
       - name: DockerのDBコンテナを起動
         run: docker compose -f docker-compose-dev.yml up -d
+
+      - name: Spotlessチェック
+        run: ./gradlew spotlessCheck
+
+      - name: テスト実行
+        run: ./gradlew test
