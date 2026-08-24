@@ -13,72 +13,102 @@ import com.tngtech.archunit.lang.ArchRule;
 class LayerDependencyTest {
 
   @ArchTest
-  static final ArchRule presentationはinfrastructureに依存していないこと =
+  static final ArchRule presentation層はinfrastructure層に依存していないこと =
       noClasses()
           .that()
           .resideInAPackage("..presentation..")
           .should()
           .accessClassesThat()
           .resideInAPackage("..infrastructure..")
-          .as("Rule 1: presentation層はinfrastructure層にアクセスしてはならない");
+          .as("presentation層はinfrastructure層にアクセスしてはならない");
 
   @ArchTest
-  static final ArchRule applicationはinfrastructureに依存していないこと =
+  static final ArchRule presentation層はdomain層に依存していないこと =
+      noClasses()
+          .that()
+          .resideInAPackage("..presentation..")
+          .should()
+          .accessClassesThat()
+          .resideInAPackage("..domain..")
+          .as("presentation層はdomain層にアクセスしてはならない");
+
+  @ArchTest
+  static final ArchRule application層はinfrastructure層に依存していないこと =
       noClasses()
           .that()
           .resideInAPackage("..application..")
           .should()
           .accessClassesThat()
           .resideInAPackage("..infrastructure..")
-          .as("Rule 2: application層はinfrastructure層にアクセスしてはならない");
+          .as("application層はinfrastructure層にアクセスしてはならない");
 
   @ArchTest
-  static final ArchRule applicationはpresentationに依存していないこと =
+  static final ArchRule application層はpresentation層に依存していないこと =
       noClasses()
           .that()
           .resideInAPackage("..application..")
           .should()
           .accessClassesThat()
           .resideInAPackage("..presentation..")
-          .as("Rule 3: application層はpresentation層にアクセスしてはならない");
+          .as("application層はpresentation層にアクセスしてはならない");
 
   @ArchTest
-  static final ArchRule domainはapplicationに依存していないこと =
+  static final ArchRule domain層はapplication層に依存していないこと =
       noClasses()
           .that()
           .resideInAPackage("..domain..")
           .should()
           .accessClassesThat()
           .resideInAPackage("..application..")
-          .as("Rule 4: domain層はapplication層にアクセスしてはならない");
+          .as("domain層はapplication層にアクセスしてはならない");
 
   @ArchTest
-  static final ArchRule domainはinfrastructureに依存していないこと =
+  static final ArchRule domain層はinfrastructure層に依存していないこと =
       noClasses()
           .that()
           .resideInAPackage("..domain..")
           .should()
           .accessClassesThat()
           .resideInAPackage("..infrastructure..")
-          .as("Rule 5: domain層はinfrastructure層にアクセスしてはならない");
+          .as("domain層はinfrastructure層にアクセスしてはならない");
 
   @ArchTest
-  static final ArchRule domainはpresentationに依存していないこと =
+  static final ArchRule domain層はpresentation層に依存していないこと =
       noClasses()
           .that()
           .resideInAPackage("..domain..")
           .should()
           .accessClassesThat()
           .resideInAPackage("..presentation..")
-          .as("Rule 6: domain層はpresentation層にアクセスしてはならない");
+          .as("domain層はpresentation層にアクセスしてはならない");
 
   @ArchTest
-  static final ArchRule infrastructureはpresentationに依存していないこと =
+  static final ArchRule domainModel層はdomainService層に依存していないこと =
+      noClasses()
+          .that()
+          .resideInAPackage("..domain.model..")
+          .should()
+          .accessClassesThat()
+          .resideInAPackage("..domain.service..")
+          .as("domain.model層はdomain.service層にアクセスしてはならない");
+
+  @ArchTest
+  static final ArchRule infrastructure層はpresentation層に依存していないこと =
       noClasses()
           .that()
           .resideInAPackage("..infrastructure..")
           .should()
           .accessClassesThat()
           .resideInAPackage("..presentation..")
-          .as("Rule 7: infrastructure層はpresentation層にアクセスしてはならない");
+          .as("infrastructure層はpresentation層にアクセスしてはならない");
+
+  @ArchTest
+  static final ArchRule infrastructure層はapplication層に依存していないこと =
+      noClasses()
+          .that()
+          .resideInAPackage("..infrastructure..")
+          .should()
+          .accessClassesThat()
+          .resideInAPackage("..application..")
+          .as("infrastructure層はapplication層にアクセスしてはならない");
 }

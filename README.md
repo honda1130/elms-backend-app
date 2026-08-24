@@ -184,35 +184,42 @@ flowchart TB
 
 本プロジェクトでは、以下のルールに従った設計・実装を行います。
 
-#### レイヤー依存ルール（Rule 1〜7）
+#### レイヤー依存ルール（Rule 1〜10）
 
 | Rule | 内容 |
 |---|---|
 | 1 | presentation 層は infrastructure 層にアクセスしてはならない |
-| 2 | application 層は infrastructure 層にアクセスしてはならない |
-| 3 | application 層は presentation 層にアクセスしてはならない |
-| 4 | domain 層は application 層にアクセスしてはならない |
-| 5 | domain 層は infrastructure 層にアクセスしてはならない |
-| 6 | domain 層は presentation 層にアクセスしてはならない |
-| 7 | infrastructure 層は presentation 層にアクセスしてはならない |
+| 2 | presentation 層は domain 層にアクセスしてはならない |
+| 3 | application 層は infrastructure 層にアクセスしてはならない |
+| 4 | application 層は presentation 層にアクセスしてはならない |
+| 5 | domain 層は application 層にアクセスしてはならない |
+| 6 | domain 層は infrastructure 層にアクセスしてはならない |
+| 7 | domain 層は presentation 層にアクセスしてはならない |
+| 8 | domain.model 層は domain.service 層にアクセスしてはならない |
+| 9 | infrastructure 層は presentation 層にアクセスしてはならない |
+| 10 | infrastructure 層は application 層にアクセスしてはならない |
 
-#### 命名・構成ルール（Rule 8〜20）
+#### 命名・構成ルール（Rule 11〜27）
 
 | Rule | 内容 |
 |---|---|
-| 8 | `presentation.request` パッケージのクラスは `Request` で終わること |
-| 9 | `@RestController` 付きクラスは `Controller` で終わること |
-| 10 | `application.service` の **インターフェース** は `ApplicationService` で終わること |
-| 11 | `application.service` の `@Service` クラスは `ApplicationServiceImpl` で終わること |
-| 12 | `application.command` パッケージのクラスは `Command` で終わること |
-| 13 | `application.dto` パッケージのクラスは `Dto` で終わること |
-| 14 | `domain.repository` の **インターフェース** は `Repository` で終わること |
-| 15 | `infrastructure.repository` の `@Repository` クラスは `RepositoryImpl` で終わること |
-| 16 | `@RestController` 付きクラスは `@RequestMapping` を持つこと |
-| 17 | `@RestController` 付きクラスは Swagger の `@Tag` を持つこと |
-| 18 | `infrastructure.repository` のクラス（インターフェース以外）は `@Repository` を持つこと |
-| 19 | `domain.service` の **インターフェース** は `DomainService` で終わること |
-| 20 | `domain.service` のクラス（インターフェース以外）は `DomainServiceImpl` で終わること |
+| 11 | `presentation.request` パッケージのクラスは `Request` で終わること |
+| 12 | `presentation.response` パッケージのクラスは `Response` で終わること |
+| 13 | `@RestController` 付きクラスは `Controller` で終わること |
+| 14 | `application.service` の **インターフェース** は `ApplicationService` で終わること |
+| 15 | `application.service` の `@Service` クラスは `ApplicationServiceImpl` で終わること |
+| 16 | `application.command` パッケージのクラスは `Command` で終わること |
+| 17 | `application.dto` パッケージのクラスは `Dto` で終わること |
+| 18 | `domain.repository` の **インターフェース** は `Repository` で終わること |
+| 19 | `infrastructure.repository` の `@Repository` クラスは `RepositoryImpl` で終わること |
+| 20 | `infrastructure.dao` パッケージのクラスは `Dao` で終わること |
+| 21 | `infrastructure.entity` パッケージのクラスは `Entity` で終わること |
+| 22 | `infrastructure.row` パッケージのクラスは `Row` で終わること |
+| 23 | `@RestController` 付きクラスは `@RequestMapping` を持つこと |
+| 24 | `@RestController` 付きクラスは Swagger の `@Tag` を持つこと |
+| 25 | `infrastructure.repository` のクラス（インターフェース以外）は `@Repository` を持つこと |
+| 26 | `domain.service` の **インターフェース** は `DomainService` で終わること |
+| 27 | `domain.service` のクラス（インターフェース以外）は `DomainServiceImpl` で終わること |
 
 ### ドメイン駆動設計（DDD）の指針
 

@@ -24,7 +24,16 @@ class NamingConventionTest {
           .resideInAPackage("..presentation.request..")
           .should()
           .haveSimpleNameEndingWith("Request")
-          .as("Rule 8: presentation.requestパッケージのクラスはRequestで終わること");
+          .as("presentation.requestパッケージのクラスはRequestで終わること");
+
+  @ArchTest
+  static final ArchRule presentationResponseのクラスはResponseで終わること =
+      classes()
+          .that()
+          .resideInAPackage("..presentation.response..")
+          .should()
+          .haveSimpleNameEndingWith("Response")
+          .as("presentation.responseパッケージのクラスはResponseで終わること");
 
   @ArchTest
   static final ArchRule RestControllerのクラスはControllerで終わること =
@@ -33,7 +42,7 @@ class NamingConventionTest {
           .areAnnotatedWith(RestController.class)
           .should()
           .haveSimpleNameEndingWith("Controller")
-          .as("Rule 9: @RestController付きクラスはControllerで終わること");
+          .as("@RestController付きクラスはControllerで終わること");
 
   @ArchTest
   static final ArchRule applicationServiceのインターフェースはApplicationServiceで終わること =
@@ -44,7 +53,7 @@ class NamingConventionTest {
           .areInterfaces()
           .should()
           .haveSimpleNameEndingWith("ApplicationService")
-          .as("Rule 10: application.serviceのインターフェースはApplicationServiceで終わること");
+          .as("application.serviceのインターフェースはApplicationServiceで終わること");
 
   @ArchTest
   static final ArchRule applicationServiceのServiceクラスはApplicationServiceImplで終わること =
@@ -55,7 +64,7 @@ class NamingConventionTest {
           .areAnnotatedWith(Service.class)
           .should()
           .haveSimpleNameEndingWith("ApplicationServiceImpl")
-          .as("Rule 11: application.serviceの@ServiceクラスはApplicationServiceImplで終わること");
+          .as("application.serviceの@ServiceクラスはApplicationServiceImplで終わること");
 
   @ArchTest
   static final ArchRule applicationCommandのクラスはCommandで終わること =
@@ -64,7 +73,7 @@ class NamingConventionTest {
           .resideInAPackage("..application.command..")
           .should()
           .haveSimpleNameEndingWith("Command")
-          .as("Rule 12: application.commandパッケージのクラスはCommandで終わること");
+          .as("application.commandパッケージのクラスはCommandで終わること");
 
   @ArchTest
   static final ArchRule applicationDtoのクラスはDtoで終わること =
@@ -73,7 +82,7 @@ class NamingConventionTest {
           .resideInAPackage("..application.dto..")
           .should()
           .haveSimpleNameEndingWith("Dto")
-          .as("Rule 13: application.dtoパッケージのクラスはDtoで終わること");
+          .as("application.dtoパッケージのクラスはDtoで終わること");
 
   @ArchTest
   static final ArchRule domainRepositoryのインターフェースはRepositoryで終わること =
@@ -84,7 +93,7 @@ class NamingConventionTest {
           .areInterfaces()
           .should()
           .haveSimpleNameEndingWith("Repository")
-          .as("Rule 14: domain.repositoryのインターフェースはRepositoryで終わること");
+          .as("domain.repositoryのインターフェースはRepositoryで終わること");
 
   @ArchTest
   static final ArchRule infrastructureRepositoryのRepositoryクラスはRepositoryImplで終わること =
@@ -95,7 +104,34 @@ class NamingConventionTest {
           .areAnnotatedWith(Repository.class)
           .should()
           .haveSimpleNameEndingWith("RepositoryImpl")
-          .as("Rule 15: infrastructure.repositoryの@RepositoryクラスはRepositoryImplで終わること");
+          .as("infrastructure.repositoryの@RepositoryクラスはRepositoryImplで終わること");
+
+  @ArchTest
+  static final ArchRule infrastructureDaoのクラスはDaoで終わること =
+      classes()
+          .that()
+          .resideInAPackage("..infrastructure.dao..")
+          .should()
+          .haveSimpleNameEndingWith("Dao")
+          .as("infrastructure.daoパッケージのクラスはDaoで終わること");
+
+  @ArchTest
+  static final ArchRule infrastructureEntityのクラスはEntityで終わること =
+      classes()
+          .that()
+          .resideInAPackage("..infrastructure.entity..")
+          .should()
+          .haveSimpleNameEndingWith("Entity")
+          .as("infrastructure.entityパッケージのクラスはEntityで終わること");
+
+  @ArchTest
+  static final ArchRule infrastructureRowのクラスはRowで終わること =
+      classes()
+          .that()
+          .resideInAPackage("..infrastructure.row..")
+          .should()
+          .haveSimpleNameEndingWith("Row")
+          .as("infrastructure.rowパッケージのクラスはRowで終わること");
 
   @ArchTest
   static final ArchRule RestControllerのクラスはRequestMappingを持つこと =
@@ -104,7 +140,7 @@ class NamingConventionTest {
           .areAnnotatedWith(RestController.class)
           .should()
           .beAnnotatedWith(RequestMapping.class)
-          .as("Rule 16: @RestController付きクラスは@RequestMappingを持つこと");
+          .as("@RestController付きクラスは@RequestMappingを持つこと");
 
   @ArchTest
   static final ArchRule RestControllerのクラスはTagアノテーションを持つこと =
@@ -113,7 +149,7 @@ class NamingConventionTest {
           .areAnnotatedWith(RestController.class)
           .should()
           .beAnnotatedWith(Tag.class)
-          .as("Rule 17: @RestController付きクラスはSwaggerの@Tagを持つこと");
+          .as("@RestController付きクラスはSwaggerの@Tagを持つこと");
 
   @ArchTest
   static final ArchRule infrastructureRepositoryの非インターフェースクラスはRepositoryを持つこと =
@@ -124,7 +160,7 @@ class NamingConventionTest {
           .areNotInterfaces()
           .should()
           .beAnnotatedWith(Repository.class)
-          .as("Rule 18: infrastructure.repositoryのクラス（インターフェース以外）は@Repositoryを持つこと");
+          .as("infrastructure.repositoryのクラス（インターフェース以外）は@Repositoryを持つこと");
 
   @ArchTest
   static final ArchRule domainServiceのインターフェースはDomainServiceで終わること =
@@ -135,7 +171,7 @@ class NamingConventionTest {
           .areInterfaces()
           .should()
           .haveSimpleNameEndingWith("DomainService")
-          .as("Rule 19: domain.serviceのインターフェースはDomainServiceで終わること");
+          .as("domain.serviceのインターフェースはDomainServiceで終わること");
 
   @ArchTest
   static final ArchRule domainServiceの非インターフェースクラスはDomainServiceImplで終わること =
@@ -146,5 +182,5 @@ class NamingConventionTest {
           .areNotInterfaces()
           .should()
           .haveSimpleNameEndingWith("DomainServiceImpl")
-          .as("Rule 20: domain.serviceのクラス（インターフェース以外）はDomainServiceImplで終わること");
+          .as("domain.serviceのクラス（インターフェース以外）はDomainServiceImplで終わること");
 }

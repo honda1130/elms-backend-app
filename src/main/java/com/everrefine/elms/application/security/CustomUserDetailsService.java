@@ -1,4 +1,4 @@
-package com.everrefine.elms.infrastructure.security;
+package com.everrefine.elms.application.security;
 
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.User;
