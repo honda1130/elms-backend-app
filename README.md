@@ -363,7 +363,7 @@ flowchart TB
 | `command` | アプリケーションサービスのメソッドの引数に指定するコマンドオブジェクト | `～Command` |
 | `dto` | アプリケーションサービスのメソッドが戻り値として返す DTO | `～Dto` |
 | `exception` | アプリケーション層の例外 | — |
-| `security` | Spring Security 用のユーザー詳細サービス | — |
+| `security` | Spring Security とアプリケーション層を接続する認証サービス | `～Service` |
 | `util` | アプリケーション層のユーティリティ | — |
 | `service` | アプリケーションサービスのインターフェースおよび実装クラス | インターフェース: `ドメインの名前 + ApplicationService` / 実装: `ドメインの名前 + ApplicationServiceImpl` |
 
@@ -403,7 +403,7 @@ flowchart TB
 | `request` | API のリクエストを受け取るためのオブジェクト | `～Request` |
 | `response` | API のレスポンスのオブジェクト | `～Response` |
 | `exception` | グローバル例外ハンドラー | — |
-| `security` | JWT フィルター・Spring Security 設定 | — |
+| `security` | Spring Security・HTTP の入口に関するクラス（JWT フィルター・Spring Security 設定） | — |
 | `scheduler` | 定期実行ジョブ | — |
 
 `response` について：アプリケーションサービスのメソッドの戻り値（DTO）と内容が変わらなければ、DTO をそのまま API のレスポンスとして返してよい。
