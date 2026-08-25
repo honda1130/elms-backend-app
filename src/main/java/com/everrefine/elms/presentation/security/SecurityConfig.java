@@ -1,4 +1,4 @@
-package com.everrefine.elms.application.security;
+package com.everrefine.elms.presentation.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
@@ -103,8 +103,7 @@ public class SecurityConfig {
   /**
    * 未認証時に401とエラーレスポンスを返すエントリーポイントを生成する。
    *
-   * <p>infrastructure層はpresentation層に依存できないため、{@code ErrorResponse} を参照せずMapで同じ形（code /
-   * message）を組み立てる。
+   * <p>Spring Security の入口で必要な最小限のレスポンスとして、{@code ErrorResponse} と同じ形（code / message）を組み立てる。
    *
    * @return 認証エントリーポイント
    */
