@@ -11,6 +11,8 @@ import com.everrefine.elms.application.dto.UserImportResponseDto;
 import com.everrefine.elms.application.dto.UserPageDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
+import com.everrefine.elms.application.exception.UnauthorizedException;
+import com.everrefine.elms.domain.exception.InvalidValueException;
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.ProgressRate;
 import com.everrefine.elms.domain.model.user.User;
@@ -33,11 +35,9 @@ import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 /** ユーザーアプリケーションサービスの実装。 */
 @Service
@@ -135,7 +135,14 @@ public class UserApplicationServiceImpl implements UserApplicationService {
       throw new BadRequestException("パスワードの確認が一致しません");
     }
 
-    userRepository.createUser(userCreateCommand.toUser());
+    User user;
+    try {
+      user = userCreateCommand.toUser();
+    } catch (InvalidValueException e) {
+      throw new BadRequestException(e.getMessage(), e);
+    }
+
+    userRepository.createUser(user);
   }
 
   @Override
@@ -148,7 +155,16 @@ public class UserApplicationServiceImpl implements UserApplicationService {
                 () ->
                     new ResourceNotFoundException(
                         User.class, String.valueOf(userUpdateCommand.id())));
-    userRepository.updateUser(userUpdateCommand.toUser(user));
+    // 値オブジェクト生成の失敗のみをクライアント起因として扱う。
+    // リポジトリ呼び出しまでtryに含めると、DBデータ不整合によるInvalidValueExceptionまで400になってしまう。
+    User updatedUser;
+    try {
+      updatedUser = userUpdateCommand.toUser(user);
+    } catch (InvalidValueException e) {
+      throw new BadRequestException(e.getMessage(), e);
+    }
+
+    userRepository.updateUser(updatedUser);
   }
 
   @Override
@@ -255,10 +271,11 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   @Transactional
   @Override
   public void updatePassword(PasswordUpdateCommand passwordUpdateCommand) {
-    User user = userDomainService.getLoginUser();
+    User user =
+        userDomainService.findLoginUser().orElseThrow(() -> new UnauthorizedException("認証されていません"));
 
     if (!user.isCurrentPasswordMatch(passwordUpdateCommand.currentPassword())) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST);
+      throw new BadRequestException("現在のパスワードが一致しません");
     }
 
     userRepository.updateUser(
@@ -277,7 +294,12 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     User currentUser = findCurrentUser(userImportCommand);
     throwExceptionIfCurrentUserNotIncluded(userImportCommand, currentUser);
     throwExceptionIfAdminNotIncluded(userImportCommand);
-    List<User> users = userImportCommand.toUsersKeepingCurrentUserId(currentUser);
+    List<User> users;
+    try {
+      users = userImportCommand.toUsersKeepingCurrentUserId(currentUser);
+    } catch (InvalidValueException e) {
+      throw new BadRequestException(e.getMessage(), e);
+    }
 
     userRepository.deleteAllUsers();
     userRepository.saveAllUsers(users);
@@ -312,7 +334,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
         userImportCommand.rows().stream()
             .anyMatch(row -> row.hasEmailAddress(currentUser.emailAddress()));
     if (!currentUserExists) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "現在ログイン中のユーザーがCSVに含まれていません");
+      throw new BadRequestException("現在ログイン中のユーザーがCSVに含まれていません");
     }
   }
 
@@ -323,7 +345,7 @@ public class UserApplicationServiceImpl implements UserApplicationService {
    */
   private void throwExceptionIfAdminNotIncluded(UserImportCommand userImportCommand) {
     if (!userImportCommand.containsAdmin()) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "管理者ユーザーを1人以上含めてください");
+      throw new BadRequestException("管理者ユーザーを1人以上含めてください");
     }
   }
 }

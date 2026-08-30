@@ -2,6 +2,8 @@ package com.everrefine.elms.application.service;
 
 import com.everrefine.elms.application.command.PasswordResetConfirmCommand;
 import com.everrefine.elms.application.command.PasswordResetRequestCommand;
+import com.everrefine.elms.application.exception.BadRequestException;
+import com.everrefine.elms.domain.exception.InvalidValueException;
 import com.everrefine.elms.domain.model.passwordreset.PasswordResetToken;
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.User;
@@ -36,7 +38,7 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
     Optional<User> userOpt;
     try {
       userOpt = userRepository.findUserByEmailAddress(new EmailAddress(command.emailAddress()));
-    } catch (IllegalArgumentException e) {
+    } catch (InvalidValueException e) {
       return;
     }
 
@@ -56,20 +58,20 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
     PasswordResetToken resetToken =
         passwordResetTokenRepository
             .findByToken(command.token())
-            .orElseThrow(() -> new IllegalArgumentException("無効なトークンです"));
+            .orElseThrow(() -> new BadRequestException("無効なトークンです"));
 
     if (resetToken.isExpired()) {
-      throw new IllegalArgumentException("トークンの有効期限が切れています");
+      throw new BadRequestException("トークンの有効期限が切れています");
     }
 
     if (resetToken.isUsed()) {
-      throw new IllegalArgumentException("このトークンはすでに使用されています");
+      throw new BadRequestException("このトークンはすでに使用されています");
     }
 
     User user =
         userRepository
             .findUserById(resetToken.userId())
-            .orElseThrow(() -> new IllegalArgumentException("ユーザーが見つかりません"));
+            .orElseThrow(() -> new BadRequestException("ユーザーが見つかりません"));
 
     String emailAddress = user.emailAddress().value();
     userRepository.updateUser(user.update(null, command.newPassword(), null, null, null, null));

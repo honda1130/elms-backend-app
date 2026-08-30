@@ -12,6 +12,8 @@ import com.everrefine.elms.application.command.UserImportCommand;
 import com.everrefine.elms.application.command.UserSearchCommand;
 import com.everrefine.elms.application.dto.UserImportResponseDto;
 import com.everrefine.elms.application.dto.UserPageDto;
+import com.everrefine.elms.application.exception.BadRequestException;
+import com.everrefine.elms.application.exception.UnauthorizedException;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.UserRepository;
 import com.everrefine.elms.presentation.request.PasswordUpdateRequest;
@@ -37,7 +39,6 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.io.Resource;
-import org.springframework.http.HttpStatus;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -50,7 +51,6 @@ import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -197,7 +197,7 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void 認証情報がないとき401のResponseStatusExceptionが投げられること() {
+    void 認証情報がないときUnauthorizedExceptionが投げられること() {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId =
@@ -207,30 +207,30 @@ class UserApplicationServiceImplTest {
       PasswordUpdateRequest request = new PasswordUpdateRequest("currentPass", "newPass");
       PasswordUpdateCommand passwordUpdateCommand = request.toCommand();
       // Act & Assert
-      ResponseStatusException ex =
+      UnauthorizedException ex =
           assertThrows(
-              ResponseStatusException.class,
+              UnauthorizedException.class,
               () -> userApplicationService.updatePassword(passwordUpdateCommand));
-      assertEquals(HttpStatus.UNAUTHORIZED, ex.getStatusCode());
+      assertEquals("認証されていません", ex.getMessage());
     }
 
     @Test
-    void ユーザーが存在しないとき404のResponseStatusExceptionが投げられること() {
+    void ユーザーが存在しないときUnauthorizedExceptionが投げられること() {
       // Arrange - DBに存在しないユーザーIDで認証済みの状態にする
       createAuthentication(UUID.randomUUID(), "currentPass");
       PasswordUpdateRequest request = new PasswordUpdateRequest("currentPass", "newPass");
       PasswordUpdateCommand passwordUpdateCommand = request.toCommand();
 
       // Act & Assert
-      ResponseStatusException ex =
+      UnauthorizedException ex =
           assertThrows(
-              ResponseStatusException.class,
+              UnauthorizedException.class,
               () -> userApplicationService.updatePassword(passwordUpdateCommand));
-      assertEquals(HttpStatus.NOT_FOUND, ex.getStatusCode());
+      assertEquals("認証されていません", ex.getMessage());
     }
 
     @Test
-    void パスワードが一致しないとき400のResponseStatusExceptionが投げられること() {
+    void パスワードが一致しないときBadRequestExceptionが投げられること() {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId =
@@ -243,11 +243,11 @@ class UserApplicationServiceImplTest {
       PasswordUpdateCommand passwordUpdateCommand = request.toCommand();
 
       // Act & Assert
-      ResponseStatusException ex =
+      BadRequestException ex =
           assertThrows(
-              ResponseStatusException.class,
+              BadRequestException.class,
               () -> userApplicationService.updatePassword(passwordUpdateCommand));
-      assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
+      assertEquals("現在のパスワードが一致しません", ex.getMessage());
     }
   }
 
@@ -308,20 +308,19 @@ class UserApplicationServiceImplTest {
     }
 
     @Test
-    void ファイル未指定の場合ResponseStatusExceptionが投げられること() {
+    void ファイル未指定の場合BadRequestExceptionが投げられること() {
       // Arrange
       UUID currentUserId = UUID.randomUUID();
 
       // Act & Assert
-      ResponseStatusException ex =
+      BadRequestException ex =
           assertThrows(
-              ResponseStatusException.class, () -> UserImportCommand.from(null, currentUserId));
-      assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-      assertEquals("CSVファイルを指定してください", ex.getReason());
+              BadRequestException.class, () -> UserImportCommand.from(null, currentUserId));
+      assertEquals("CSVファイルを指定してください", ex.getMessage());
     }
 
     @Test
-    void 現在ログイン中ユーザーがCSVに含まれていない場合ResponseStatusExceptionが投げられること() throws IOException {
+    void 現在ログイン中ユーザーがCSVに含まれていない場合BadRequestExceptionが投げられること() throws IOException {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId1 =
@@ -339,16 +338,15 @@ class UserApplicationServiceImplTest {
               new ByteArrayInputStream(csvContent.getBytes(StandardCharsets.UTF_8)));
 
       // Act & Assert
-      ResponseStatusException ex =
+      BadRequestException ex =
           assertThrows(
-              ResponseStatusException.class,
+              BadRequestException.class,
               () -> userApplicationService.importUsersCsv(UserImportCommand.from(file, userId1)));
-      assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-      assertEquals("現在ログイン中のユーザーがCSVに含まれていません", ex.getReason());
+      assertEquals("現在ログイン中のユーザーがCSVに含まれていません", ex.getMessage());
     }
 
     @Test
-    void ADMINユーザーがCSVに含まれていない場合ResponseStatusExceptionが投げられること() throws IOException {
+    void ADMINユーザーがCSVに含まれていない場合BadRequestExceptionが投げられること() throws IOException {
       // Arrange
       LocalDateTime dateTime = LocalDateTime.of(2026, 3, 21, 9, 30);
       UUID userId =
@@ -365,16 +363,15 @@ class UserApplicationServiceImplTest {
               new ByteArrayInputStream(csvContent.getBytes(StandardCharsets.UTF_8)));
 
       // Act & Assert
-      ResponseStatusException ex =
+      BadRequestException ex =
           assertThrows(
-              ResponseStatusException.class,
+              BadRequestException.class,
               () -> userApplicationService.importUsersCsv(UserImportCommand.from(file, userId)));
-      assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-      assertEquals("管理者ユーザーを1人以上含めてください", ex.getReason());
+      assertEquals("管理者ユーザーを1人以上含めてください", ex.getMessage());
     }
 
     @Test
-    void CSVヘッダが不正な場合ResponseStatusExceptionが投げられること() throws IOException {
+    void CSVヘッダが不正な場合BadRequestExceptionが投げられること() throws IOException {
       // Arrange
       UUID currentUserId = UUID.randomUUID();
 
@@ -389,18 +386,17 @@ class UserApplicationServiceImplTest {
               new ByteArrayInputStream(csvContent.getBytes(StandardCharsets.UTF_8)));
 
       // Act & Assert
-      ResponseStatusException ex =
+      BadRequestException ex =
           assertThrows(
-              ResponseStatusException.class,
+              BadRequestException.class,
               () ->
                   userApplicationService.importUsersCsv(
                       UserImportCommand.from(file, currentUserId)));
-      assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-      assertEquals("CSVヘッダが不正です", ex.getReason());
+      assertEquals("CSVヘッダが不正です", ex.getMessage());
     }
 
     @Test
-    void CSVファイル形式が不正な場合ResponseStatusExceptionが投げられること() throws IOException {
+    void CSVファイル形式が不正な場合BadRequestExceptionが投げられること() throws IOException {
       // Arrange
       UUID currentUserId = UUID.randomUUID();
 
@@ -413,14 +409,13 @@ class UserApplicationServiceImplTest {
               new ByteArrayInputStream(csvContent.getBytes(StandardCharsets.UTF_8)));
 
       // Act & Assert
-      ResponseStatusException ex =
+      BadRequestException ex =
           assertThrows(
-              ResponseStatusException.class,
+              BadRequestException.class,
               () ->
                   userApplicationService.importUsersCsv(
                       UserImportCommand.from(file, currentUserId)));
-      assertEquals(HttpStatus.BAD_REQUEST, ex.getStatusCode());
-      assertEquals("CSVファイル形式が不正です", ex.getReason());
+      assertEquals("CSVファイル形式が不正です", ex.getMessage());
     }
   }
 

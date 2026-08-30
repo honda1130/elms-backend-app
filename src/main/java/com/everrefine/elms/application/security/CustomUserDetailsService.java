@@ -1,5 +1,6 @@
 package com.everrefine.elms.application.security;
 
+import com.everrefine.elms.domain.exception.InvalidValueException;
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.UserRepository;
@@ -28,9 +29,16 @@ public class CustomUserDetailsService implements UserDetailsService {
 
   @Override
   public UserDetails loadUserByUsername(String emailAddress) {
+    EmailAddress email;
+    try {
+      email = new EmailAddress(emailAddress);
+    } catch (InvalidValueException e) {
+      throw new UsernameNotFoundException("User not found", e);
+    }
+
     User user =
         userRepository
-            .findUserByEmailAddress(new EmailAddress(emailAddress))
+            .findUserByEmailAddress(email)
             .orElseThrow(() -> new UsernameNotFoundException("User not found"));
 
     return new org.springframework.security.core.userdetails.User(

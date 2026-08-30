@@ -1,15 +1,15 @@
 package com.everrefine.elms.application.command;
 
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.util.CsvImportUtils;
+import com.everrefine.elms.domain.exception.InvalidValueException;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.model.user.UserRole;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.server.ResponseStatusException;
 
 /** CSV取込用ユーザーのコマンド。CSV全体のユーザー情報を保持する。 */
 public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> rows) {
@@ -93,9 +93,9 @@ public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> r
           EXPECTED_HEADER,
           UserImportCommand::toUserImportRowCommand,
           UserImportCommand::badRequest,
-          ResponseStatusException.class,
+          BadRequestException.class,
           false);
-    } catch (ResponseStatusException e) {
+    } catch (BadRequestException e) {
       throw e;
     } catch (Exception e) {
       throw badRequest("CSVファイルの解析に失敗しました: " + e.getMessage());
@@ -116,15 +116,14 @@ public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> r
     String userName = values[3].trim();
 
     if (roleStr.isEmpty() || realName.isEmpty() || emailAddress.isEmpty() || userName.isEmpty()) {
-      throw new ResponseStatusException(
-          HttpStatus.BAD_REQUEST, "行" + lineNumber + ": 必須項目が入力されていません");
+      throw new BadRequestException("行" + lineNumber + ": 必須項目が入力されていません");
     }
 
     UserRole userRole;
     try {
       userRole = UserRole.fromRoleName(roleStr);
-    } catch (IllegalArgumentException e) {
-      throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "行" + lineNumber + ": 権限が不正です");
+    } catch (InvalidValueException e) {
+      throw new BadRequestException("行" + lineNumber + ": 権限が不正です", e);
     }
 
     return new UserImportRowCommand(userRole, realName, emailAddress, userName);
@@ -141,17 +140,15 @@ public record UserImportCommand(UUID currentUserId, List<UserImportRowCommand> r
 
     for (UserImportRowCommand row : rows) {
       if (!emailAddresses.add(row.emailAddress())) {
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST, "CSV内に重複するメールアドレスが存在します: " + row.emailAddress());
+        throw new BadRequestException("CSV内に重複するメールアドレスが存在します: " + row.emailAddress());
       }
       if (!userNames.add(row.userName())) {
-        throw new ResponseStatusException(
-            HttpStatus.BAD_REQUEST, "CSV内に重複するユーザー名が存在します: " + row.userName());
+        throw new BadRequestException("CSV内に重複するユーザー名が存在します: " + row.userName());
       }
     }
   }
 
-  private static ResponseStatusException badRequest(String message) {
-    return new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+  private static BadRequestException badRequest(String message) {
+    return new BadRequestException(message);
   }
 }

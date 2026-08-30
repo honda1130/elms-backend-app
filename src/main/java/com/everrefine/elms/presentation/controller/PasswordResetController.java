@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -66,24 +65,19 @@ public class PasswordResetController {
   @PostMapping("/confirm")
   public ResponseEntity<Void> confirmPasswordReset(
       @RequestBody @Valid PasswordResetConfirmRequest request, HttpServletResponse response) {
-    try {
-      String emailAddress =
-          passwordResetApplicationService.confirmPasswordReset(request.toCommand());
+    String emailAddress = passwordResetApplicationService.confirmPasswordReset(request.toCommand());
 
-      Authentication authentication =
-          authenticationManager.authenticate(
-              new UsernamePasswordAuthenticationToken(emailAddress, request.newPassword()));
+    Authentication authentication =
+        authenticationManager.authenticate(
+            new UsernamePasswordAuthenticationToken(emailAddress, request.newPassword()));
 
-      String jwtToken = jwtApplicationService.generateJwtToken(authentication.getName());
-      // パスワードリセット後の自動ログインはrememberMe=false（セッションCookie）とする
-      String refreshToken =
-          jwtApplicationService.generateRefreshToken(authentication.getName(), false);
-      jwtApplicationService.setJwtTokenToResponseCookie(response, jwtToken);
-      jwtApplicationService.setRefreshTokenToResponseCookie(response, refreshToken, false);
+    String jwtToken = jwtApplicationService.generateJwtToken(authentication.getName());
+    // パスワードリセット後の自動ログインはrememberMe=false（セッションCookie）とする
+    String refreshToken =
+        jwtApplicationService.generateRefreshToken(authentication.getName(), false);
+    jwtApplicationService.setJwtTokenToResponseCookie(response, jwtToken);
+    jwtApplicationService.setRefreshTokenToResponseCookie(response, refreshToken, false);
 
-      return ResponseEntity.ok().build();
-    } catch (IllegalArgumentException e) {
-      return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
-    }
+    return ResponseEntity.ok().build();
   }
 }

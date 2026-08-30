@@ -239,6 +239,10 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
     UUID precedingLessonId = lessonOrderUpdateCommand.precedingLessonId();
     UUID followingLessonId = lessonOrderUpdateCommand.followingLessonId();
 
+    if (precedingLessonId == null && followingLessonId == null) {
+      throw new BadRequestException("前後のレッスンIDをどちらか一方は指定してください");
+    }
+
     List<UUID> lessonIds = new ArrayList<>();
     lessonIds.add(targetLessonId);
     if (precedingLessonId != null && !lessonIds.contains(precedingLessonId)) {
