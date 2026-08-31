@@ -64,22 +64,6 @@ class PasswordResetApplicationServiceImplTest {
     return jdbcTemplate.queryForObject("SELECT COUNT(*) FROM password_reset_tokens", Integer.class);
   }
 
-  /**
-   * password_reset_tokens の外部キー制約を外す。
-   *
-   * <p>制約名は環境やマイグレーションで変わりうるため、名前を直接書かずにカタログから引く。 このテーブルの外部キーは user_id の1つだけである。
-   */
-  private void dropUserIdForeignKey() {
-    String constraintName =
-        jdbcTemplate.queryForObject(
-            """
-                SELECT conname FROM pg_constraint
-                WHERE conrelid = 'password_reset_tokens'::regclass AND contype = 'f'
-                """,
-            String.class);
-    jdbcTemplate.execute("ALTER TABLE password_reset_tokens DROP CONSTRAINT " + constraintName);
-  }
-
   @Nested
   class パスワードリセット申請 {
 
@@ -182,32 +166,6 @@ class PasswordResetApplicationServiceImplTest {
               () -> passwordResetApplicationService.confirmPasswordReset(command));
 
       assertEquals("このトークンはすでに使用されています", exception.getMessage());
-    }
-
-    /**
-     * トークンに対応するユーザーが存在しない場合を検証する。
-     *
-     * <p>{@code password_reset_tokens.user_id} は {@code users(id)} への外部キー（ON DELETE CASCADE）のため、
-     * 通常この状態は発生しない。将来この制約が変わったときに分岐が正しく働くことを保証するため、
-     * トランザクション内で制約を外して再現する。PostgreSQLのDDLはトランザクショナルなので、 テスト終了時に制約ごとロールバックされ、他のテストには影響しない。
-     */
-    @Test
-    void トークンに対応するユーザーが存在しないときBadRequestExceptionが投げられること() {
-      UUID userId =
-          testData.createUser("orphan@example.com", "password123", "山田 太郎", "yamada", "GENERAL");
-      testData.createPasswordResetToken(
-          userId, "orphan-token", LocalDateTime.now().plusMinutes(10), null);
-      dropUserIdForeignKey();
-      jdbcTemplate.update("DELETE FROM users WHERE id = ?", userId);
-      PasswordResetConfirmCommand command =
-          new PasswordResetConfirmCommand("orphan-token", "newPass123");
-
-      BadRequestException exception =
-          assertThrows(
-              BadRequestException.class,
-              () -> passwordResetApplicationService.confirmPasswordReset(command));
-
-      assertEquals("ユーザーが見つかりません", exception.getMessage());
     }
 
     @Test

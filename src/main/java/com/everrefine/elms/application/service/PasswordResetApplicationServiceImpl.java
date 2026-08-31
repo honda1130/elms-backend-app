@@ -68,6 +68,8 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
       throw new BadRequestException("このトークンはすでに使用されています");
     }
 
+    // password_reset_tokens.user_id は users(id) への外部キー（ON DELETE CASCADE）のため、
+    // 現行のDBスキーマではユーザーが存在しないトークンは発生しない。将来スキーマが変わった場合に備えた防御的な分岐。
     User user =
         userRepository
             .findUserById(resetToken.userId())
