@@ -2,14 +2,13 @@ package com.everrefine.elms.domain.service;
 
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.UserRepository;
+import java.util.Optional;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Component;
-import org.springframework.web.server.ResponseStatusException;
 
 /** {@link UserDomainService} の実装。 */
 @Component
@@ -24,15 +23,22 @@ public class UserDomainServiceImpl implements UserDomainService {
    * @return ログインユーザー
    */
   @Override
-  public User getLoginUser() {
+  public Optional<User> findLoginUser() {
     Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
     if (authentication == null || !authentication.isAuthenticated()) {
-      throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+      return Optional.empty();
     }
-    UserDetails userDetails = (UserDetails) authentication.getPrincipal();
-    UUID userId = UUID.fromString(userDetails.getUsername());
-    return userRepository
-        .findUserById(userId)
-        .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+    if (!(authentication.getPrincipal() instanceof UserDetails userDetails)) {
+      return Optional.empty();
+    }
+
+    UUID userId;
+    try {
+      userId = UUID.fromString(userDetails.getUsername());
+    } catch (IllegalArgumentException e) {
+      return Optional.empty();
+    }
+    return userRepository.findUserById(userId);
   }
 }

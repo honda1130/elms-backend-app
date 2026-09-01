@@ -9,7 +9,10 @@ import jakarta.validation.constraints.Size;
 public record NewsCreateRequest(
     @Schema(description = "お知らせタイトル", example = "システムメンテナンスのお知らせ") @Size(max = 255) @NotBlank
         String title,
-    @Schema(description = "お知らせ本文", example = "4月1日にシステムメンテナンスを行います。") @NotBlank String content) {
+    @Schema(description = "お知らせ本文", example = "4月1日にシステムメンテナンスを行います。")
+        @Size(max = 1_000_000)
+        @NotBlank
+        String content) {
 
   /**
    * Commandオブジェクトに変換する。

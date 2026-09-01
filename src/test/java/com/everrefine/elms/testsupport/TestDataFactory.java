@@ -220,4 +220,27 @@ public class TestDataFactory {
     jdbcTemplate.update(
         "INSERT INTO lesson_tags (lesson_id, tag_id) VALUES (?, ?)", lessonId, tagId);
   }
+
+  /**
+   * パスワードリセットトークンを作成する。
+   *
+   * <p>有効期限切れ・使用済みの状態を再現できるよう、有効期限と使用日時を呼び出し側から指定する。
+   *
+   * @param userId ユーザーID
+   * @param token トークン文字列
+   * @param expiresAt 有効期限
+   * @param usedAt 使用日時（未使用の場合はnull）
+   */
+  public void createPasswordResetToken(
+      UUID userId, String token, LocalDateTime expiresAt, LocalDateTime usedAt) {
+    jdbcTemplate.update(
+        """
+            INSERT INTO password_reset_tokens (user_id, token, expires_at, used_at)
+            VALUES (?, ?, ?, ?)
+            """,
+        userId,
+        token,
+        expiresAt,
+        usedAt);
+  }
 }

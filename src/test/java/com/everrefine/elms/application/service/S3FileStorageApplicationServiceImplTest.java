@@ -1,11 +1,14 @@
 package com.everrefine.elms.application.service;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.domain.model.user.Password;
 import java.io.IOException;
 import java.time.LocalDateTime;
@@ -21,6 +24,7 @@ import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -99,6 +103,20 @@ class S3FileStorageApplicationServiceImplTest {
         "GENERAL",
         LocalDateTime.now(),
         LocalDateTime.now());
+  }
+
+  @Nested
+  class 画像保存 {
+    @Test
+    void 空ファイルの場合BadRequestExceptionが投げられること() {
+      MockMultipartFile file = new MockMultipartFile("file", "empty.png", "image/png", new byte[0]);
+
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class, () -> fileStorageApplicationService.saveImage(file));
+
+      assertEquals("空のファイルです", exception.getMessage());
+    }
   }
 
   @Nested

@@ -185,8 +185,7 @@ public class UserController {
   @ApiResponses({
     @ApiResponse(responseCode = "200", description = "変更成功"),
     @ApiResponse(responseCode = "400", description = "パスワードが一致しません"),
-    @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "404", description = "ユーザーが存在しません")
+    @ApiResponse(responseCode = "401", description = "認証されていません、または認証ユーザーが存在しません")
   })
   @PutMapping("/password")
   public void updatePassword(@RequestBody @Valid PasswordUpdateRequest passwordUpdateRequest) {

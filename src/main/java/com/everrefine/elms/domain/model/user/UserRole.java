@@ -1,5 +1,7 @@
 package com.everrefine.elms.domain.model.user;
 
+import com.everrefine.elms.domain.exception.InvalidValueException;
+
 /** ユーザーロールを表す列挙型。 */
 public enum UserRole {
   GENERAL("一般"),
@@ -46,6 +48,6 @@ public enum UserRole {
         return userRole;
       }
     }
-    throw new IllegalArgumentException("権限が不正です");
+    throw new InvalidValueException("権限が不正です");
   }
 }

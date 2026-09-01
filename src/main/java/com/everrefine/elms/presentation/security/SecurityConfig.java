@@ -1,9 +1,9 @@
 package com.everrefine.elms.presentation.security;
 
+import com.everrefine.elms.presentation.response.ErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
-import java.util.Map;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -103,7 +103,7 @@ public class SecurityConfig {
   /**
    * 未認証時に401とエラーレスポンスを返すエントリーポイントを生成する。
    *
-   * <p>Spring Security の入口で必要な最小限のレスポンスとして、{@code ErrorResponse} と同じ形（code / message）を組み立てる。
+   * <p>Spring Security の入口で必要な最小限のレスポンスとして、{@code ErrorResponse} を返す。
    *
    * @return 認証エントリーポイント
    */
@@ -113,7 +113,7 @@ public class SecurityConfig {
       response.setContentType(MediaType.APPLICATION_JSON_VALUE);
       response.setCharacterEncoding(StandardCharsets.UTF_8.name());
       OBJECT_MAPPER.writeValue(
-          response.getWriter(), Map.of("code", "UNAUTHORIZED", "message", "認証されていません"));
+          response.getWriter(), new ErrorResponse("UNAUTHORIZED", "認証されていません"));
     };
   }
 

@@ -961,6 +961,19 @@ public class LessonApplicationServiceImplTest {
     }
 
     @Test
+    void 前後のレッスンIDがどちらもnullの場合BadRequestExceptionが投げられること() {
+      UUID lessonId = UUID.randomUUID();
+      LessonOrderUpdateRequest request = new LessonOrderUpdateRequest(null, null);
+
+      BadRequestException exception =
+          assertThrows(
+              BadRequestException.class,
+              () -> lessonApplicationService.updateLessonOrder(request.toCommand(lessonId)));
+
+      assertEquals("前後のレッスンIDをどちらか一方は指定してください", exception.getMessage());
+    }
+
+    @Test
     void 存在しないレッスンIDで並び替えするとResourceNotFoundExceptionが投げられること() {
       // Arrange - 存在するレッスンを1つ準備
       UUID courseId = testData.createCourse(new BigDecimal("1"), "テストコース", "コース説明");

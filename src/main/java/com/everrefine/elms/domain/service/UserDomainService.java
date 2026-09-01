@@ -1,6 +1,7 @@
 package com.everrefine.elms.domain.service;
 
 import com.everrefine.elms.domain.model.user.User;
+import java.util.Optional;
 
 /** ユーザーに関するドメインサービスインターフェース。 */
 public interface UserDomainService {
@@ -19,7 +20,7 @@ public interface UserDomainService {
   /**
    * ログイン中のユーザーを取得する。
    *
-   * @return ログイン中のユーザー
+   * @return ログイン中のユーザー。認証情報がない、または対応するユーザーが存在しない場合は空
    */
-  User getLoginUser();
+  Optional<User> findLoginUser();
 }

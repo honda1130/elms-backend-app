@@ -116,23 +116,30 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void 空ファイルアップロードのときErrorResponse付きでステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.multipart("/api/files/upload")
+                  .file(new MockMultipartFile("file", "empty.png", "image/png", new byte[0])))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+          .andExpect(jsonPath("$.message").value("空のファイルです"));
+    }
+
+    @Test
     void 現在のパスワードが一致しないときステータス400が返ること() throws Exception {
       mockMvc
           .perform(
               MockMvcRequestBuilders.put("/api/users/password")
                   .contentType(MediaType.APPLICATION_JSON)
                   .content("{\"currentPassword\":\"wrongPass\",\"newPassword\":\"newPass123\"}"))
-          .andExpect(status().isBadRequest());
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+          .andExpect(jsonPath("$.message").value("現在のパスワードが一致しません"));
     }
 
-    /**
-     * {@code ResponseStatusException} に指定した理由がレスポンスに残ることを検証する。
-     *
-     * <p>この例外は親クラスの {@code ErrorResponseException} としても処理されるため、専用ハンドラがなくてもステータスは400になる。
-     * しかし理由が定型文に置き換わってしまうため、メッセージまで検証することで専用ハンドラの退行を検出する。
-     */
     @Test
-    void CSVに現在ログイン中ユーザーが含まれないとき理由付きでステータス400が返ること() throws Exception {
+    void CSVに現在ログイン中ユーザーが含まれないときErrorResponse付きでステータス400が返ること() throws Exception {
       String csv = "権限,氏名,メールアドレス,ユーザー名\n管理者,山田 太郎,other@example.com,yamada\n";
       mockMvc
           .perform(
@@ -141,7 +148,96 @@ public class GlobalExceptionHandlerTest {
                       new MockMultipartFile(
                           "file", "users.csv", "text/csv", csv.getBytes(StandardCharsets.UTF_8))))
           .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
           .andExpect(jsonPath("$.message").value("現在ログイン中のユーザーがCSVに含まれていません"));
+    }
+
+    @Test
+    void パスワードリセット確定で無効なトークンのときErrorResponse付きでステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.post("/api/password-reset/confirm")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"token\":\"missing-token\",\"newPassword\":\"newPass123\"}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+          .andExpect(jsonPath("$.message").value("無効なトークンです"));
+    }
+
+    @Test
+    void ユーザー作成で不正なメールアドレスのときErrorResponse付きでステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.post("/api/users")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(
+                      """
+                      {
+                        "realName": "山田 太郎",
+                        "userName": "yamada",
+                        "emailAddress": "invalid-email",
+                        "password": "password123",
+                        "confirmPassword": "password123",
+                        "thumbnailUrl": null,
+                        "userRole": "GENERAL"
+                      }
+                      """))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+          .andExpect(jsonPath("$.message").value("不正なメールアドレスです: invalid-email"));
+    }
+
+    /**
+     * クライアント起因の文字数超過が500にならないことを検証する。
+     *
+     * <p>{@code NewsContent} は上限を超えると {@code InvalidValueException} を投げ、
+     * これは想定外のシステムエラーとして500に変換される。リクエスト側で弾かないと クライアント起因の誤りが500として返ってしまうため、その退行を検出する。
+     */
+    @Test
+    void お知らせ作成で本文が上限を超えるときステータス400が返ること() throws Exception {
+      String content = "a".repeat(1_000_001);
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.post("/api/news")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"title\":\"テスト\",\"content\":\"" + content + "\"}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void お知らせ更新で本文が上限を超えるときステータス400が返ること() throws Exception {
+      String content = "a".repeat(1_000_001);
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put("/api/news/{newsId}", MISSING_ID)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"title\":\"テスト\",\"content\":\"" + content + "\"}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void レッスン並び順更新で前後IDがどちらもnullのときErrorResponse付きでステータス400が返ること() throws Exception {
+      UUID courseId = testData.createCourse(new BigDecimal("987655"), "順序更新検証コース", "説明");
+      UUID lessonGroupId =
+          testData.createLessonGroup(courseId, new BigDecimal("1024"), "順序更新検証グループ");
+      UUID lessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1024"), "順序更新検証レッスン", "本文", null);
+
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put(
+                      "/api/courses/{courseId}/lesson-groups/{lessonGroupId}/lessons/{lessonId}/order",
+                      courseId,
+                      lessonGroupId,
+                      lessonId)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"precedingLessonId\":null,\"followingLessonId\":null}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
+          .andExpect(jsonPath("$.message").value("前後のレッスンIDをどちらか一方は指定してください"));
     }
   }
 
@@ -155,6 +251,29 @@ public class GlobalExceptionHandlerTest {
           .perform(MockMvcRequestBuilders.get("/api/courses"))
           .andExpect(status().isUnauthorized())
           .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void トークン更新が匿名認証のときErrorResponse付きでステータス401が返ること() throws Exception {
+      SecurityContextHolder.clearContext();
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/auth/refresh"))
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+          .andExpect(jsonPath("$.message").value("認証されていません"));
+    }
+
+    @Test
+    void パスワード更新で認証ユーザーがDBに存在しないときステータス401が返ること() throws Exception {
+      authenticateAs(MISSING_ID, "GENERAL");
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put("/api/users/password")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"currentPassword\":\"currentPass\",\"newPassword\":\"newPass123\"}"))
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
+          .andExpect(jsonPath("$.message").value("認証されていません"));
     }
 
     @Test

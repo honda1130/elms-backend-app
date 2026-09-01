@@ -12,7 +12,10 @@ public record NewsUpdateRequest(
     @Schema(description = "お知らせID", example = "1") String id,
     @Schema(description = "お知らせタイトル", example = "システムメンテナンスのお知らせ") @NotBlank @Size(max = 255)
         String title,
-    @Schema(description = "お知らせ本文", example = "4月1日にシステムメンテナンスを行います。") @NotBlank String content) {
+    @Schema(description = "お知らせ本文", example = "4月1日にシステムメンテナンスを行います。")
+        @NotBlank
+        @Size(max = 1_000_000)
+        String content) {
 
   /**
    * Commandオブジェクトに変換する。
