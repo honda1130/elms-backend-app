@@ -3,6 +3,8 @@ package com.everrefine.elms.domain.repository;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
 import com.everrefine.elms.domain.model.lesson.LessonSearchCriteria;
+import com.everrefine.elms.domain.model.lesson.LessonTagSearchCondition;
+import com.everrefine.elms.domain.model.lesson.LessonTagSearchCourse;
 import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
 import java.math.BigDecimal;
 import java.util.List;
@@ -126,4 +128,22 @@ public interface LessonRepository {
    * @return 全レッスン一覧
    */
   List<LessonWithCourseAndLessonGroup> findAllLessons();
+
+  /**
+   * 指定タグに紐づくレッスンを、コース・レッスングループの階層でページング取得する。
+   *
+   * <p>コース順・レッスングループ順・レッスン順の昇順で返す。指定タグに一致するレッスンを持たない コース・レッスングループは含まれない。
+   *
+   * @param condition タグ検索条件
+   * @return コースごとにレッスングループとレッスンをまとめた検索結果
+   */
+  List<LessonTagSearchCourse> searchLessonsByTag(LessonTagSearchCondition condition);
+
+  /**
+   * 指定タグに紐づくレッスンの総件数を取得する。
+   *
+   * @param condition タグ検索条件
+   * @return レッスンの総件数
+   */
+  int countLessonsByTag(LessonTagSearchCondition condition);
 }

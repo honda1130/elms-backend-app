@@ -4,11 +4,13 @@ import com.everrefine.elms.application.command.LessonCreateCommand;
 import com.everrefine.elms.application.command.LessonImportCommand;
 import com.everrefine.elms.application.command.LessonImportRowCommand;
 import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
+import com.everrefine.elms.application.command.LessonTagSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonGroupDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
+import com.everrefine.elms.application.dto.LessonTagSearchResultDto;
 import com.everrefine.elms.application.dto.LessonWithCourseAndLessonGroupDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
@@ -17,6 +19,9 @@ import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
 import com.everrefine.elms.domain.model.lesson.LessonInGroup;
+import com.everrefine.elms.domain.model.lesson.LessonTagSearchCondition;
+import com.everrefine.elms.domain.model.lesson.LessonTagSearchCourse;
+import com.everrefine.elms.domain.model.lesson.LessonTagSearchLesson;
 import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
 import com.everrefine.elms.domain.model.tag.Tag;
 import com.everrefine.elms.domain.model.tag.TagName;
@@ -403,5 +408,32 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
       throw new RuntimeException("CSVファイルの作成に失敗しました", e);
     }
     return new ByteArrayResource(baos.toByteArray());
+  }
+
+  @Transactional(readOnly = true)
+  @Override
+  public LessonTagSearchResultDto searchLessonsByTag(
+      LessonTagSearchCommand lessonTagSearchCommand) {
+    LessonTagSearchCondition condition = lessonTagSearchCommand.toSearchCondition();
+
+    int totalSize = lessonRepository.countLessonsByTag(condition);
+    List<LessonTagSearchCourse> courses = lessonRepository.searchLessonsByTag(condition);
+
+    List<UUID> lessonIds =
+        courses.stream()
+            .flatMap(course -> course.lessonGroups().stream())
+            .flatMap(lessonGroup -> lessonGroup.lessons().stream())
+            .map(LessonTagSearchLesson::lessonId)
+            .distinct()
+            .toList();
+    Map<UUID, List<Tag>> tagsByLessonId = lessonTagRepository.findTagsByLessonIdIn(lessonIds);
+
+    return LessonTagSearchResultDto.from(
+        condition.getTagNameValue(),
+        courses,
+        tagsByLessonId,
+        condition.getPageNum(),
+        condition.getPageSize(),
+        totalSize);
   }
 }

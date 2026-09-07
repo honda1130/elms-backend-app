@@ -3,10 +3,12 @@ package com.everrefine.elms.application.service;
 import com.everrefine.elms.application.command.LessonCreateCommand;
 import com.everrefine.elms.application.command.LessonImportCommand;
 import com.everrefine.elms.application.command.LessonOrderUpdateCommand;
+import com.everrefine.elms.application.command.LessonTagSearchCommand;
 import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
+import com.everrefine.elms.application.dto.LessonTagSearchResultDto;
 import java.util.UUID;
 import org.springframework.core.io.Resource;
 
@@ -76,4 +78,12 @@ public interface LessonApplicationService {
    * @return 取込したレッスングループ件数とレッスン件数
    */
   LessonImportResponseDto importLessonsCsv(LessonImportCommand lessonImportCommand);
+
+  /**
+   * 指定タグに紐づくレッスンを全コース横断で検索する。
+   *
+   * @param lessonTagSearchCommand タグ検索用Command
+   * @return コース・レッスングループの階層でまとめた検索結果
+   */
+  LessonTagSearchResultDto searchLessonsByTag(LessonTagSearchCommand lessonTagSearchCommand);
 }

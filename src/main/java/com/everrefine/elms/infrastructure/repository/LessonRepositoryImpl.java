@@ -3,12 +3,15 @@ package com.everrefine.elms.infrastructure.repository;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
 import com.everrefine.elms.domain.model.lesson.LessonSearchCriteria;
+import com.everrefine.elms.domain.model.lesson.LessonTagSearchCondition;
+import com.everrefine.elms.domain.model.lesson.LessonTagSearchCourse;
 import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
 import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.infrastructure.dao.LessonDao;
 import com.everrefine.elms.infrastructure.dao.LessonGroupDao;
 import com.everrefine.elms.infrastructure.entity.lesson.LessonEntity;
 import com.everrefine.elms.infrastructure.row.LessonGroupWithLessonRow;
+import com.everrefine.elms.infrastructure.row.LessonTagSearchRow;
 import com.everrefine.elms.infrastructure.row.LessonWithCourseAndLessonGroupRow;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -145,5 +148,17 @@ public class LessonRepositoryImpl implements LessonRepository {
     return lessonDao.findByAllLessons().stream()
         .map(LessonWithCourseAndLessonGroupRow::toDomain)
         .toList();
+  }
+
+  @Override
+  public List<LessonTagSearchCourse> searchLessonsByTag(LessonTagSearchCondition condition) {
+    return LessonTagSearchRow.toDomainList(
+        lessonDao.searchLessonsByTagName(
+            condition.getTagNameValue(), condition.getPageSize(), condition.getOffset()));
+  }
+
+  @Override
+  public int countLessonsByTag(LessonTagSearchCondition condition) {
+    return lessonDao.countLessonsByTagName(condition.getTagNameValue());
   }
 }
