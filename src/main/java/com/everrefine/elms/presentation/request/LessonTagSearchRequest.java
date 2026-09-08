@@ -12,7 +12,7 @@ public record LessonTagSearchRequest(
         @NotBlank(message = "タグ名は必須です")
         @Size(max = 255, message = "タグ名は255文字以内で入力してください")
         String tag,
-    @Schema(description = "ページ番号（1始まり）", example = "1") @Positive(message = "ページ番号は1以上を指定してください") Integer page,
+    @Schema(description = "ページ番号（1始まり）", example = "1") @Positive(message = "ページ番号は1以上を指定してください") Integer pageNum,
     @Schema(description = "1ページ当たりの件数", example = "10")
         @Positive(message = "1ページ当たりの件数は1以上を指定してください") Integer pageSize) {
 
@@ -23,6 +23,6 @@ public record LessonTagSearchRequest(
    */
   public LessonTagSearchCommand toCommand() {
     return new LessonTagSearchCommand(
-        tag, page == null ? 1 : page, pageSize == null ? 10 : pageSize);
+        tag, pageNum == null ? 1 : pageNum, pageSize == null ? 10 : pageSize);
   }
 }

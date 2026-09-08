@@ -101,7 +101,7 @@ public class GlobalExceptionHandlerTest {
           .perform(
               MockMvcRequestBuilders.get("/api/lessons/search")
                   .param("tag", "Java")
-                  .param("page", "0"))
+                  .param("pageNum", "0"))
           .andExpect(status().isBadRequest())
           .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
     }
