@@ -13,17 +13,25 @@ import com.everrefine.elms.application.command.LessonUpdateCommand;
 import com.everrefine.elms.application.dto.CourseLessonsDto;
 import com.everrefine.elms.application.dto.LessonDto;
 import com.everrefine.elms.application.dto.LessonImportResponseDto;
+import com.everrefine.elms.application.dto.LessonTagSearchCourseDto;
+import com.everrefine.elms.application.dto.LessonTagSearchLessonDto;
+import com.everrefine.elms.application.dto.LessonTagSearchLessonGroupDto;
+import com.everrefine.elms.application.dto.LessonTagSearchResultDto;
+import com.everrefine.elms.application.dto.TagDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
+import com.everrefine.elms.domain.exception.InvalidValueException;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.presentation.request.LessonCreateRequest;
 import com.everrefine.elms.presentation.request.LessonOrderUpdateRequest;
 import com.everrefine.elms.presentation.request.LessonTagRequest;
+import com.everrefine.elms.presentation.request.LessonTagSearchRequest;
 import com.everrefine.elms.presentation.request.LessonUpdateRequest;
 import com.everrefine.elms.testsupport.TestDataFactory;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -1043,6 +1051,281 @@ public class LessonApplicationServiceImplTest {
               ResourceNotFoundException.class,
               () -> lessonApplicationService.updateLessonOrder(request.toCommand(lesson1Id)));
       assertEquals("Lesson が見つかりませんでした。id = " + nonExistentId, exception.getMessage());
+    }
+  }
+
+  @Nested
+  class タグに紐づくレッスン検索 {
+
+    @Test
+    void 指定したタグに紐づくレッスンだけが返ること() {
+      // Arrange
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "タグ検索コース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "タグ検索グループ");
+      UUID targetLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1"), "タグ検索対象レッスン", "説明", null);
+      testData.createLesson(
+          lessonGroupId, courseId, new BigDecimal("2"), "タグ検索タグなしレッスン", "説明", null);
+      UUID otherTaggedLessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("3"), "タグ検索別タグレッスン", "説明", null);
+      testData.createLessonTag(targetLessonId, testData.createTag("タグ検索Java"));
+      testData.createLessonTag(otherTaggedLessonId, testData.createTag("タグ検索Python"));
+
+      // Act
+      LessonTagSearchResultDto result = searchByTag("タグ検索Java", 1, 10);
+
+      // Assert
+      assertEquals("タグ検索Java", result.tag());
+      assertEquals(1, result.totalSize());
+      assertEquals(1, result.courses().size());
+      assertEquals(1, result.courses().getFirst().lessonGroups().size());
+      assertEquals(
+          List.of(targetLessonId),
+          lessonIdsOf(result.courses().getFirst().lessonGroups().getFirst()));
+    }
+
+    @Test
+    void コースとレッスングループとレッスンが表示順の昇順で返ること() {
+      // Arrange - 表示順とは逆の順番で登録し、並び替えが効いていることを確認する
+      UUID secondCourseId = testData.createCourse(new BigDecimal("2"), "並び順コースB", "コース説明");
+      UUID firstCourseId = testData.createCourse(new BigDecimal("1"), "並び順コースA", "コース説明");
+      UUID secondGroupId =
+          testData.createLessonGroup(firstCourseId, new BigDecimal("2"), "並び順グループA2");
+      UUID firstGroupId =
+          testData.createLessonGroup(firstCourseId, new BigDecimal("1"), "並び順グループA1");
+      UUID otherCourseGroupId =
+          testData.createLessonGroup(secondCourseId, new BigDecimal("1"), "並び順グループB1");
+      UUID secondLessonId =
+          testData.createLesson(
+              firstGroupId, firstCourseId, new BigDecimal("2"), "並び順レッスンA1-2", "説明", null);
+      UUID firstLessonId =
+          testData.createLesson(
+              firstGroupId, firstCourseId, new BigDecimal("1"), "並び順レッスンA1-1", "説明", null);
+      UUID thirdLessonId =
+          testData.createLesson(
+              secondGroupId, firstCourseId, new BigDecimal("1"), "並び順レッスンA2-1", "説明", null);
+      UUID fourthLessonId =
+          testData.createLesson(
+              otherCourseGroupId, secondCourseId, new BigDecimal("1"), "並び順レッスンB1-1", "説明", null);
+      UUID tagId = testData.createTag("並び順タグ");
+      testData.createLessonTag(firstLessonId, tagId);
+      testData.createLessonTag(secondLessonId, tagId);
+      testData.createLessonTag(thirdLessonId, tagId);
+      testData.createLessonTag(fourthLessonId, tagId);
+
+      // Act
+      LessonTagSearchResultDto result = searchByTag("並び順タグ", 1, 10);
+
+      // Assert
+      assertEquals(
+          List.of(firstCourseId, secondCourseId),
+          result.courses().stream().map(LessonTagSearchCourseDto::courseId).toList());
+
+      LessonTagSearchCourseDto firstCourse = result.courses().getFirst();
+      assertEquals(
+          List.of(firstGroupId, secondGroupId),
+          firstCourse.lessonGroups().stream()
+              .map(LessonTagSearchLessonGroupDto::lessonGroupId)
+              .toList());
+      assertEquals(
+          List.of(firstLessonId, secondLessonId),
+          lessonIdsOf(firstCourse.lessonGroups().getFirst()));
+    }
+
+    @Test
+    void 一致するレッスンを持たないコースとレッスングループが結果に含まれないこと() {
+      // Arrange
+      UUID targetCourseId = testData.createCourse(new BigDecimal("1"), "絞り込みコースA", "コース説明");
+      UUID otherCourseId = testData.createCourse(new BigDecimal("2"), "絞り込みコースB", "コース説明");
+      UUID targetGroupId =
+          testData.createLessonGroup(targetCourseId, new BigDecimal("1"), "絞り込みグループA1");
+      UUID emptyGroupId =
+          testData.createLessonGroup(targetCourseId, new BigDecimal("2"), "絞り込みグループA2");
+      UUID otherCourseGroupId =
+          testData.createLessonGroup(otherCourseId, new BigDecimal("1"), "絞り込みグループB1");
+      UUID targetLessonId =
+          testData.createLesson(
+              targetGroupId, targetCourseId, new BigDecimal("1"), "絞り込み対象レッスン", "説明", null);
+      testData.createLesson(
+          emptyGroupId, targetCourseId, new BigDecimal("1"), "絞り込み対象外レッスンA2", "説明", null);
+      testData.createLesson(
+          otherCourseGroupId, otherCourseId, new BigDecimal("1"), "絞り込み対象外レッスンB1", "説明", null);
+      testData.createLessonTag(targetLessonId, testData.createTag("絞り込みタグ"));
+
+      // Act
+      LessonTagSearchResultDto result = searchByTag("絞り込みタグ", 1, 10);
+
+      // Assert
+      assertEquals(
+          List.of(targetCourseId),
+          result.courses().stream().map(LessonTagSearchCourseDto::courseId).toList());
+      assertEquals(
+          List.of(targetGroupId),
+          result.courses().getFirst().lessonGroups().stream()
+              .map(LessonTagSearchLessonGroupDto::lessonGroupId)
+              .toList());
+    }
+
+    @Test
+    void レッスンに紐づくタグが検索条件以外のタグも含めて返ること() {
+      // Arrange
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "複数タグコース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "複数タググループ");
+      UUID lessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1"), "複数タグレッスン", "説明", null);
+      UUID javaTagId = testData.createTag("複数タグJava");
+      UUID springTagId = testData.createTag("複数タグSpring");
+      testData.createLessonTag(lessonId, javaTagId);
+      testData.createLessonTag(lessonId, springTagId);
+
+      // Act
+      LessonTagSearchResultDto result = searchByTag("複数タグJava", 1, 10);
+
+      // Assert
+      List<UUID> tagIds =
+          result.courses().getFirst().lessonGroups().getFirst().lessons().getFirst().tags().stream()
+              .map(TagDto::id)
+              .toList();
+      assertEquals(2, tagIds.size());
+      assertTrue(tagIds.contains(javaTagId));
+      assertTrue(tagIds.contains(springTagId));
+    }
+
+    @Test
+    void 前後に空白を含むタグ名でも検索できること() {
+      // Arrange
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "空白タグコース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "空白タググループ");
+      UUID lessonId =
+          testData.createLesson(
+              lessonGroupId, courseId, new BigDecimal("1"), "空白タグレッスン", "説明", null);
+      testData.createLessonTag(lessonId, testData.createTag("空白タグJava"));
+
+      // Act
+      LessonTagSearchResultDto result = searchByTag("  空白タグJava  ", 1, 10);
+
+      // Assert - 検索に使用したタグ名も前後の空白を取り除いた値が返る
+      assertEquals("空白タグJava", result.tag());
+      assertEquals(1, result.totalSize());
+      assertEquals(
+          List.of(lessonId), lessonIdsOf(result.courses().getFirst().lessonGroups().getFirst()));
+    }
+
+    @Test
+    void 該当するレッスンがない場合に空のコース一覧と総件数0が返ること() {
+      // Act
+      LessonTagSearchResultDto result = searchByTag("存在しないタグ", 1, 10);
+
+      // Assert
+      assertEquals("存在しないタグ", result.tag());
+      assertTrue(result.courses().isEmpty());
+      assertEquals(0, result.totalSize());
+      assertEquals(1, result.pageNum());
+      assertEquals(10, result.pageSize());
+    }
+
+    @Test
+    void 指定したページ番号と件数でレッスンがページングされること() {
+      // Arrange
+      List<UUID> lessonIds = createTaggedLessons("ページングタグ", 3);
+
+      // Act
+      LessonTagSearchResultDto firstPage = searchByTag("ページングタグ", 1, 2);
+      LessonTagSearchResultDto secondPage = searchByTag("ページングタグ", 2, 2);
+
+      // Assert
+      assertEquals(1, firstPage.pageNum());
+      assertEquals(2, firstPage.pageSize());
+      assertEquals(
+          List.of(lessonIds.get(0), lessonIds.get(1)),
+          lessonIdsOf(firstPage.courses().getFirst().lessonGroups().getFirst()));
+      assertEquals(2, secondPage.pageNum());
+      assertEquals(
+          List.of(lessonIds.get(2)),
+          lessonIdsOf(secondPage.courses().getFirst().lessonGroups().getFirst()));
+    }
+
+    @Test
+    void 総件数がページサイズによらず該当レッスンの全件数になること() {
+      // Arrange
+      createTaggedLessons("総件数タグ", 3);
+
+      // Act
+      LessonTagSearchResultDto result = searchByTag("総件数タグ", 1, 2);
+
+      // Assert
+      assertEquals(3, result.totalSize());
+      assertEquals(2, lessonIdsOf(result.courses().getFirst().lessonGroups().getFirst()).size());
+    }
+
+    @Test
+    void ページ番号が1未満の場合にInvalidValueExceptionが投げられること() {
+      InvalidValueException exception =
+          assertThrows(InvalidValueException.class, () -> searchByTag("タグ", 0, 10));
+
+      assertEquals("ページ番号は1以上を指定してください", exception.getMessage());
+    }
+
+    @Test
+    void ページサイズが1未満の場合にInvalidValueExceptionが投げられること() {
+      InvalidValueException exception =
+          assertThrows(InvalidValueException.class, () -> searchByTag("タグ", 1, 0));
+
+      assertEquals("ページサイズは1以上を指定してください", exception.getMessage());
+    }
+
+    /**
+     * 指定したタグ名・ページ情報でタグ検索を実行する。
+     *
+     * @param tag タグ名
+     * @param pageNum ページ番号
+     * @param pageSize 1ページ当たりの件数
+     * @return タグ検索結果
+     */
+    private LessonTagSearchResultDto searchByTag(String tag, int pageNum, int pageSize) {
+      return lessonApplicationService.searchLessonsByTag(
+          new LessonTagSearchRequest(tag, pageNum, pageSize).toCommand());
+    }
+
+    /**
+     * 1つのレッスングループ配下に、同じタグを付けたレッスンを表示順の昇順で作成する。
+     *
+     * @param tagName 付与するタグ名
+     * @param lessonCount 作成するレッスン数
+     * @return 作成したレッスンIDを表示順の昇順で並べたリスト
+     */
+    private List<UUID> createTaggedLessons(String tagName, int lessonCount) {
+      UUID courseId = testData.createCourse(new BigDecimal("1"), tagName + "コース", "コース説明");
+      UUID lessonGroupId =
+          testData.createLessonGroup(courseId, new BigDecimal("1"), tagName + "グループ");
+      UUID tagId = testData.createTag(tagName);
+      List<UUID> lessonIds = new ArrayList<>();
+      for (int lessonNumber = 1; lessonNumber <= lessonCount; lessonNumber++) {
+        UUID lessonId =
+            testData.createLesson(
+                lessonGroupId,
+                courseId,
+                new BigDecimal(lessonNumber),
+                tagName + "レッスン" + lessonNumber,
+                "説明",
+                null);
+        testData.createLessonTag(lessonId, tagId);
+        lessonIds.add(lessonId);
+      }
+      return lessonIds;
+    }
+
+    /**
+     * レッスングループ配下のレッスンIDを、返却された順のまま取り出す。
+     *
+     * @param lessonGroup タグ検索結果のレッスングループ
+     * @return レッスンIDのリスト
+     */
+    private List<UUID> lessonIdsOf(LessonTagSearchLessonGroupDto lessonGroup) {
+      return lessonGroup.lessons().stream().map(LessonTagSearchLessonDto::lessonId).toList();
     }
   }
 }

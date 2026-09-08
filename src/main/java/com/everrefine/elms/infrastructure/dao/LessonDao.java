@@ -1,6 +1,7 @@
 package com.everrefine.elms.infrastructure.dao;
 
 import com.everrefine.elms.infrastructure.entity.lesson.LessonEntity;
+import com.everrefine.elms.infrastructure.row.LessonTagSearchRow;
 import com.everrefine.elms.infrastructure.row.LessonWithCourseAndLessonGroupRow;
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -112,4 +113,44 @@ public interface LessonDao extends CrudRepository<LessonEntity, UUID> {
          ORDER BY c.course_order ASC, lg.lesson_group_order ASC, l.lesson_order ASC
          """)
   List<LessonWithCourseAndLessonGroupRow> findByAllLessons();
+
+  @Query(
+      """
+         SELECT
+          l.id AS lesson_id,
+          l.lesson_order AS lesson_order,
+          l.title AS lesson_title,
+          lg.id AS lesson_group_id,
+          lg.lesson_group_order AS lesson_group_order,
+          lg.title AS lesson_group_title,
+          c.id AS course_id,
+          c.course_order AS course_order,
+          c.title AS course_title
+         FROM lessons l
+          INNER JOIN lesson_groups lg
+          ON lg.id = l.lesson_group_id
+          INNER JOIN courses c
+          ON c.id = lg.course_id
+          INNER JOIN lesson_tags lt
+          ON lt.lesson_id = l.id
+          INNER JOIN tags t
+          ON t.id = lt.tag_id
+         WHERE t.name = :tagName
+         ORDER BY c.course_order ASC, lg.lesson_group_order ASC, l.lesson_order ASC
+         LIMIT :limit OFFSET :offset
+         """)
+  List<LessonTagSearchRow> searchLessonsByTagName(
+      @Param("tagName") String tagName, @Param("limit") int limit, @Param("offset") int offset);
+
+  @Query(
+      """
+         SELECT COUNT(*)
+         FROM lessons l
+          INNER JOIN lesson_tags lt
+          ON lt.lesson_id = l.id
+          INNER JOIN tags t
+          ON t.id = lt.tag_id
+         WHERE t.name = :tagName
+         """)
+  int countLessonsByTagName(@Param("tagName") String tagName);
 }

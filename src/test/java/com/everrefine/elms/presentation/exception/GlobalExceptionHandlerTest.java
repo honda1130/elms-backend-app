@@ -88,6 +88,36 @@ public class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void タグ検索でタグ名が未指定のときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/lessons/search"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void タグ検索でページ番号が0以下のときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/lessons/search")
+                  .param("tag", "Java")
+                  .param("pageNum", "0"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void タグ検索で1ページ当たりの件数が0以下のときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/lessons/search")
+                  .param("tag", "Java")
+                  .param("pageSize", "0"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
     void リクエストボディのバリデーション違反のときステータス400が返ること() throws Exception {
       mockMvc
           .perform(
