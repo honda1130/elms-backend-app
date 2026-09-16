@@ -11,9 +11,6 @@ import com.everrefine.elms.domain.repository.PasswordResetTokenRepository;
 import com.everrefine.elms.domain.repository.UserRepository;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.mail.SimpleMailMessage;
-import org.springframework.mail.javamail.JavaMailSender;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,13 +21,7 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
 
   private final UserRepository userRepository;
   private final PasswordResetTokenRepository passwordResetTokenRepository;
-  private final JavaMailSender mailSender;
-
-  @Value("${mail.from}")
-  private String fromAddress;
-
-  @Value("${password-reset.base-url}")
-  private String baseUrl;
+  private final MailApplicationService mailApplicationService;
 
   @Override
   @Transactional
@@ -49,7 +40,7 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
     User user = userOpt.get();
     PasswordResetToken resetToken = PasswordResetToken.create(user.id());
     passwordResetTokenRepository.save(resetToken);
-    sendPasswordResetEmail(command.emailAddress(), resetToken.token());
+    mailApplicationService.sendPasswordResetEmail(command.emailAddress(), resetToken.token());
   }
 
   @Override
@@ -78,66 +69,8 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
     String emailAddress = user.emailAddress().value();
     userRepository.updateUser(user.update(null, command.newPassword(), null, null, null, null));
     passwordResetTokenRepository.save(resetToken.markAsUsed());
-    sendPasswordResetCompleteEmail(emailAddress);
+    mailApplicationService.sendPasswordResetCompleteEmail(emailAddress);
 
     return emailAddress;
-  }
-
-  /**
-   * パスワードリセット完了メールを送信する。
-   *
-   * @param to 送信先メールアドレス
-   */
-  private void sendPasswordResetCompleteEmail(String to) {
-    SimpleMailMessage message = new SimpleMailMessage();
-    message.setFrom(fromAddress);
-    message.setTo(to);
-    message.setSubject("【Javaエンジニア養成講座】パスワード再設定が完了しました");
-    message.setText(
-        """
-        Javaエンジニア養成講座をご利用いただきありがとうございます。
-
-        以下のアカウントのパスワード再設定が完了しました。
-
-        メールアドレス：%s
-
-        ※ ご自身で操作していない場合は、お問い合わせください。
-
-        ──────────────────────────────
-        Javaエンジニア養成講座
-        """
-            .formatted(to));
-    mailSender.send(message);
-  }
-
-  /**
-   * パスワードリセットメールを送信する。
-   *
-   * @param to 送信先メールアドレス
-   * @param token パスワードリセットトークン
-   */
-  private void sendPasswordResetEmail(String to, String token) {
-    String resetLink = baseUrl + "/reset-password?token=" + token;
-    SimpleMailMessage message = new SimpleMailMessage();
-    message.setFrom(fromAddress);
-    message.setTo(to);
-    message.setSubject("【Javaエンジニア養成講座】パスワード再設定のご案内");
-    message.setText(
-        """
-        Javaエンジニア養成講座をご利用いただきありがとうございます。
-
-        パスワード再設定のリクエストを受け付けました。
-        以下のリンクをクリックして、新しいパスワードを設定してください。
-
-        %s
-
-        ※ このリンクは発行から30分間有効です。
-        ※ ご自身でリクエストしていない場合は、このメールを無視してください。
-
-        ──────────────────────────────
-        Javaエンジニア養成講座
-        """
-            .formatted(resetLink));
-    mailSender.send(message);
   }
 }
