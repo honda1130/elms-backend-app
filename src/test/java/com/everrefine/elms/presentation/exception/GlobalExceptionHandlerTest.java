@@ -314,6 +314,63 @@ public class GlobalExceptionHandlerTest {
           .andExpect(status().isForbidden())
           .andExpect(jsonPath("$.code").value("FORBIDDEN"));
     }
+
+    @Test
+    void フィーチャーフラグ取得を一般ユーザーで呼ぶとステータス403が返ること() throws Exception {
+      authenticateAs(adminId, "GENERAL");
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", "welcome-mail"))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void 未認証でフィーチャーフラグ取得を呼ぶとステータス401が返ること() throws Exception {
+      SecurityContextHolder.clearContext();
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", "welcome-mail"))
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+  }
+
+  @Nested
+  class フィーチャーフラグ取得 {
+
+    @Test
+    void 管理者が登録済みのキーを指定するとステータス200が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", "welcome-mail"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.featureFlagKey").value("welcome-mail"))
+          .andExpect(jsonPath("$.enabled").value(false));
+    }
+
+    /**
+     * 未登録のキーが404ではなく200で返ることを検証する。
+     *
+     * <p>フラグが未作成の状態でも呼び出し側が分岐できるようにするための仕様であり、 リソース未検出として扱わない。
+     */
+    @Test
+    void 未登録のキーを指定してもステータス200が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", "unknown-key"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.featureFlagKey").value("unknown-key"))
+          .andExpect(jsonPath("$.enabled").value(false));
+    }
+
+    @Test
+    void キーが100文字を超えるとステータス400が返ること() throws Exception {
+      String tooLongKey = "a".repeat(101);
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", tooLongKey))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
   }
 
   @Nested

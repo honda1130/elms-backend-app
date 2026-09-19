@@ -44,3 +44,4 @@ uploads/
 
 # Mac用ファイル
 .DS_Store
+.claude/work/
