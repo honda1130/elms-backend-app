@@ -243,4 +243,32 @@ public class TestDataFactory {
         expiresAt,
         usedAt);
   }
+
+  /**
+   * フィーチャーフラグを作成する。
+   *
+   * <p>マイグレーションで投入済みのキーを指定した場合は、有効／無効の値を上書きする。
+   *
+   * @param featureFlagKey フィーチャーフラグのキー
+   * @param enabled 機能が有効ならtrue
+   * @return 作成されたフィーチャーフラグID
+   */
+  public UUID createFeatureFlag(String featureFlagKey, boolean enabled) {
+    List<UUID> existingIds =
+        jdbcTemplate.queryForList(
+            "SELECT id FROM feature_flags WHERE feature_flag_key = ?", UUID.class, featureFlagKey);
+    if (!existingIds.isEmpty()) {
+      UUID existingId = existingIds.getFirst();
+      jdbcTemplate.update("UPDATE feature_flags SET enabled = ? WHERE id = ?", enabled, existingId);
+      return existingId;
+    }
+
+    UUID featureFlagId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO feature_flags (id, feature_flag_key, enabled) VALUES (?, ?, ?)",
+        featureFlagId,
+        featureFlagKey,
+        enabled);
+    return featureFlagId;
+  }
 }

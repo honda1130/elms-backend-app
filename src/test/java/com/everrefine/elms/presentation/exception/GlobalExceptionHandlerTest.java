@@ -269,6 +269,15 @@ public class GlobalExceptionHandlerTest {
           .andExpect(jsonPath("$.code").value("BAD_REQUEST"))
           .andExpect(jsonPath("$.message").value("前後のレッスンIDをどちらか一方は指定してください"));
     }
+
+    @Test
+    void フィーチャーフラグのキーが100文字を超えるとステータス400が返ること() throws Exception {
+      String tooLongKey = "a".repeat(101);
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", tooLongKey))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
   }
 
   @Nested
@@ -313,6 +322,26 @@ public class GlobalExceptionHandlerTest {
           .perform(MockMvcRequestBuilders.delete("/api/users/{userId}", MISSING_ID))
           .andExpect(status().isForbidden())
           .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void フィーチャーフラグ取得を一般ユーザーで呼ぶとステータス403が返ること() throws Exception {
+      authenticateAs(adminId, "GENERAL");
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", "welcome-mail"))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void 未認証でフィーチャーフラグ取得を呼ぶとステータス401が返ること() throws Exception {
+      SecurityContextHolder.clearContext();
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", "welcome-mail"))
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
   }
 
@@ -382,6 +411,20 @@ public class GlobalExceptionHandlerTest {
       mockMvc
           .perform(MockMvcRequestBuilders.delete("/api/users/{userId}", MISSING_ID))
           .andExpect(status().isNoContent());
+    }
+
+    /**
+     * 未登録のフィーチャーフラグが404ではなく200で返ることを検証する。
+     *
+     * <p>フラグが未作成の状態でも呼び出し側が分岐できるようにするための仕様であり、 リソース未検出として扱わない。
+     */
+    @Test
+    void 未登録のフィーチャーフラグを指定してもステータス200が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", "unknown-key"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.featureFlagKey").value("unknown-key"))
+          .andExpect(jsonPath("$.enabled").value(false));
     }
   }
 
