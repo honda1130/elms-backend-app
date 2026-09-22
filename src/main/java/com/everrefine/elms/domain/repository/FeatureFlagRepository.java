@@ -14,4 +14,20 @@ public interface FeatureFlagRepository {
    * @return フィーチャーフラグ。該当するキーが登録されていない場合は空
    */
   Optional<FeatureFlag> findByKey(FeatureFlagKey featureFlagKey);
+
+  /**
+   * フィーチャーフラグを登録する。
+   *
+   * @param featureFlag 登録するフィーチャーフラグ
+   * @return 登録後のフィーチャーフラグ
+   */
+  FeatureFlag createFeatureFlag(FeatureFlag featureFlag);
+
+  /**
+   * フィーチャーフラグを更新する。
+   *
+   * @param featureFlag 更新するフィーチャーフラグ
+   * @return 更新後のフィーチャーフラグ
+   */
+  FeatureFlag updateFeatureFlag(FeatureFlag featureFlag);
 }

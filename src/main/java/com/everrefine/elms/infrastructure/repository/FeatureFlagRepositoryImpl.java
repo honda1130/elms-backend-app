@@ -22,4 +22,14 @@ public class FeatureFlagRepositoryImpl implements FeatureFlagRepository {
         .findByFeatureFlagKey(featureFlagKey.value())
         .map(FeatureFlagEntity::toDomain);
   }
+
+  @Override
+  public FeatureFlag createFeatureFlag(FeatureFlag featureFlag) {
+    return featureFlagDao.save(FeatureFlagEntity.from(featureFlag)).toDomain();
+  }
+
+  @Override
+  public FeatureFlag updateFeatureFlag(FeatureFlag featureFlag) {
+    return featureFlagDao.save(FeatureFlagEntity.from(featureFlag)).toDomain();
+  }
 }
