@@ -16,18 +16,10 @@ public interface FeatureFlagRepository {
   Optional<FeatureFlag> findByKey(FeatureFlagKey featureFlagKey);
 
   /**
-   * フィーチャーフラグを登録する。
+   * フィーチャーフラグを保存する。IDを持たない場合は登録し、持つ場合は更新する。
    *
-   * @param featureFlag 登録するフィーチャーフラグ
-   * @return 登録後のフィーチャーフラグ
+   * @param featureFlag 保存するフィーチャーフラグ
+   * @return 保存後のフィーチャーフラグ
    */
-  FeatureFlag createFeatureFlag(FeatureFlag featureFlag);
-
-  /**
-   * フィーチャーフラグを更新する。
-   *
-   * @param featureFlag 更新するフィーチャーフラグ
-   * @return 更新後のフィーチャーフラグ
-   */
-  FeatureFlag updateFeatureFlag(FeatureFlag featureFlag);
+  FeatureFlag saveFeatureFlag(FeatureFlag featureFlag);
 }

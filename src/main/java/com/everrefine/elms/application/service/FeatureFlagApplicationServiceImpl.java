@@ -44,17 +44,11 @@ public class FeatureFlagApplicationServiceImpl implements FeatureFlagApplication
   @Override
   @Transactional
   public FeatureFlagDto updateFeatureFlag(FeatureFlagUpdateCommand featureFlagUpdateCommand) {
-    FeatureFlag persistedFeatureFlag =
+    FeatureFlag featureFlag =
         featureFlagRepository
             .findByKey(new FeatureFlagKey(featureFlagUpdateCommand.featureFlagKey()))
-            .map(
-                featureFlag ->
-                    featureFlagRepository.updateFeatureFlag(
-                        featureFlagUpdateCommand.toFeatureFlag(featureFlag)))
-            .orElseGet(
-                () ->
-                    featureFlagRepository.createFeatureFlag(
-                        featureFlagUpdateCommand.toNewFeatureFlag()));
-    return FeatureFlagDto.from(persistedFeatureFlag);
+            .map(featureFlagUpdateCommand::toFeatureFlag)
+            .orElseGet(featureFlagUpdateCommand::toNewFeatureFlag);
+    return FeatureFlagDto.from(featureFlagRepository.saveFeatureFlag(featureFlag));
   }
 }

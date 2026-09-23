@@ -24,12 +24,7 @@ public class FeatureFlagRepositoryImpl implements FeatureFlagRepository {
   }
 
   @Override
-  public FeatureFlag createFeatureFlag(FeatureFlag featureFlag) {
-    return featureFlagDao.save(FeatureFlagEntity.from(featureFlag)).toDomain();
-  }
-
-  @Override
-  public FeatureFlag updateFeatureFlag(FeatureFlag featureFlag) {
+  public FeatureFlag saveFeatureFlag(FeatureFlag featureFlag) {
     return featureFlagDao.save(FeatureFlagEntity.from(featureFlag)).toDomain();
   }
 }
