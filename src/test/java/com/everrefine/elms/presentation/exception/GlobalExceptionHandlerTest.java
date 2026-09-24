@@ -276,7 +276,70 @@ public class GlobalExceptionHandlerTest {
       mockMvc
           .perform(MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", tooLongKey))
           .andExpect(status().isBadRequest())
-          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+          .andExpect(jsonPath("$.message").value("フィーチャーフラグキーは100文字以内で入力してください。"));
+    }
+
+    @Test
+    void フィーチャーフラグ取得でキーが空白のみだとステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", " "))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+          .andExpect(jsonPath("$.message").value("フィーチャーフラグキーは必須です。"));
+    }
+
+    @Test
+    void フィーチャーフラグ更新でキーが100文字を超えるとステータス400が返ること() throws Exception {
+      String tooLongKey = "a".repeat(101);
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put("/api/feature-flags/{featureFlagKey}", tooLongKey)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"enabled\":true}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+          .andExpect(jsonPath("$.message").value("フィーチャーフラグキーは100文字以内で入力してください。"));
+    }
+
+    @Test
+    void フィーチャーフラグ更新でキーが空白のみだとステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put("/api/feature-flags/{featureFlagKey}", " ")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"enabled\":true}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+          .andExpect(jsonPath("$.message").value("フィーチャーフラグキーは必須です。"));
+    }
+
+    @Test
+    void フィーチャーフラグ更新で有効状態が未指定だとステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put("/api/feature-flags/{featureFlagKey}", "welcome-mail")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+          .andExpect(jsonPath("$.message").value("enabled: フィーチャーフラグの有効状態は必須です。"));
+    }
+
+    /** パスパラメータとボディの両方が不正な場合に、両方の違反内容が返ることを検証する。 */
+    @Test
+    void フィーチャーフラグ更新でキーと有効状態の両方が不正だと両方の違反内容が返ること() throws Exception {
+      String tooLongKey = "a".repeat(101);
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put("/api/feature-flags/{featureFlagKey}", tooLongKey)
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{}"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"))
+          .andExpect(
+              jsonPath("$.message")
+                  .value("フィーチャーフラグキーは100文字以内で入力してください。, enabled: フィーチャーフラグの有効状態は必須です。"));
     }
   }
 
@@ -340,6 +403,30 @@ public class GlobalExceptionHandlerTest {
       mockMvc
           .perform(
               MockMvcRequestBuilders.get("/api/feature-flags/{featureFlagKey}", "welcome-mail"))
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
+
+    @Test
+    void フィーチャーフラグ更新を一般ユーザーで呼ぶとステータス403が返ること() throws Exception {
+      authenticateAs(adminId, "GENERAL");
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put("/api/feature-flags/{featureFlagKey}", "welcome-mail")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"enabled\":true}"))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void 未認証でフィーチャーフラグ更新を呼ぶとステータス401が返ること() throws Exception {
+      SecurityContextHolder.clearContext();
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put("/api/feature-flags/{featureFlagKey}", "welcome-mail")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"enabled\":true}"))
           .andExpect(status().isUnauthorized())
           .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
@@ -425,6 +512,23 @@ public class GlobalExceptionHandlerTest {
           .andExpect(status().isOk())
           .andExpect(jsonPath("$.featureFlagKey").value("unknown-key"))
           .andExpect(jsonPath("$.enabled").value(false));
+    }
+
+    /**
+     * 未登録のフィーチャーフラグを更新しても404ではなく200で返ることを検証する。
+     *
+     * <p>未登録のキーは新規登録する仕様であり、リソース未検出として扱わない。
+     */
+    @Test
+    void 未登録のフィーチャーフラグを更新してもステータス200が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.put("/api/feature-flags/{featureFlagKey}", "unknown-key")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content("{\"enabled\":true}"))
+          .andExpect(status().isOk())
+          .andExpect(jsonPath("$.featureFlagKey").value("unknown-key"))
+          .andExpect(jsonPath("$.enabled").value(true));
     }
   }
 

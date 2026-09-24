@@ -16,11 +16,26 @@ public record FeatureFlagEntity(
     LocalDateTime updatedAt) {
 
   /**
+   * ドメインモデルからエンティティを生成する。
+   *
+   * @param featureFlag フィーチャーフラグのドメインモデル
+   * @return エンティティ
+   */
+  public static FeatureFlagEntity from(FeatureFlag featureFlag) {
+    return new FeatureFlagEntity(
+        featureFlag.id(),
+        featureFlag.key(),
+        featureFlag.enabled(),
+        featureFlag.createdAt(),
+        featureFlag.updatedAt());
+  }
+
+  /**
    * ドメインモデルに変換する。
    *
    * @return フィーチャーフラグのドメインモデル
    */
   public FeatureFlag toDomain() {
-    return new FeatureFlag(id, featureFlagKey, enabled);
+    return new FeatureFlag(id, featureFlagKey, enabled, createdAt, updatedAt);
   }
 }

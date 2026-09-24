@@ -8,7 +8,6 @@ import com.everrefine.elms.presentation.response.ErrorResponse;
 import java.util.Map;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.MessageSourceResolvable;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.HttpStatusCode;
@@ -16,6 +15,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.InternalAuthenticationServiceException;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -100,6 +100,9 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
   /**
    * パスパラメータ・クエリパラメータのバリデーション失敗を処理する。違反内容を返すため親クラスの既定動作を上書きする。
    *
+   * <p>パスパラメータに制約があるメソッドでは、リクエストボディの違反もこの例外で届く。 ボディの項目エラーには、{@link #handleMethodArgumentNotValid}
+   * と同じ「項目名: メッセージ」形式でどの項目が不正かを付ける。
+   *
    * @param ex バリデーション例外
    * @param headers レスポンスヘッダー
    * @param status ステータスコード
@@ -115,7 +118,11 @@ public class GlobalExceptionHandler extends ResponseEntityExceptionHandler {
     String message =
         ex.getParameterValidationResults().stream()
             .flatMap(result -> result.getResolvableErrors().stream())
-            .map(MessageSourceResolvable::getDefaultMessage)
+            .map(
+                error ->
+                    error instanceof FieldError fieldError
+                        ? fieldError.getField() + ": " + fieldError.getDefaultMessage()
+                        : error.getDefaultMessage())
             .collect(Collectors.joining(", "));
     return new ResponseEntity<>(new ErrorResponse("VALIDATION_ERROR", message), headers, status);
   }
