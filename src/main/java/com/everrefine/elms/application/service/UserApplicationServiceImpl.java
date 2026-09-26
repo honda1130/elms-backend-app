@@ -44,11 +44,16 @@ import org.springframework.transaction.annotation.Transactional;
 @AllArgsConstructor
 public class UserApplicationServiceImpl implements UserApplicationService {
 
+  /** ウェルカムメールの送信可否を切り替えるフィーチャーフラグのキー。 */
+  private static final String WELCOME_MAIL_FEATURE_FLAG_KEY = "welcome-mail";
+
   private final UserRepository userRepository;
   private final UserLoginHistoryRepository userLoginHistoryRepository;
   private final UserLessonRepository userLessonRepository;
   private final LessonRepository lessonRepository;
   private final UserDomainService userDomainService;
+  private final FeatureFlagApplicationService featureFlagApplicationService;
+  private final MailApplicationService mailApplicationService;
 
   /**
    * CSV出力用に値をエスケープする。
@@ -143,6 +148,21 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     }
 
     userRepository.createUser(user);
+    sendWelcomeMailIfEnabled(user);
+  }
+
+  /**
+   * フィーチャーフラグが有効な場合に、作成したユーザーへウェルカムメールを送信する。
+   *
+   * <p>フラグが未登録の場合は無効として扱い、送信しない。リリース後に問題が起きた際、再デプロイせずに送信を止められるようにするためである。
+   *
+   * @param user 作成したユーザー
+   */
+  private void sendWelcomeMailIfEnabled(User user) {
+    if (!featureFlagApplicationService.getFeatureFlag(WELCOME_MAIL_FEATURE_FLAG_KEY).enabled()) {
+      return;
+    }
+    mailApplicationService.sendWelcomeEmail(user.emailAddress().value(), user.userName().value());
   }
 
   @Override

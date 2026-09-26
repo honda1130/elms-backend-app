@@ -120,7 +120,8 @@ public class UserController {
     @ApiResponse(responseCode = "200", description = "作成成功"),
     @ApiResponse(responseCode = "400", description = "パスワードと確認用パスワードが一致しません"),
     @ApiResponse(responseCode = "401", description = "認証されていません"),
-    @ApiResponse(responseCode = "403", description = "管理者権限が必要です")
+    @ApiResponse(responseCode = "403", description = "管理者権限が必要です"),
+    @ApiResponse(responseCode = "500", description = "サーバーエラー（ウェルカムメールの送信失敗を含む）")
   })
   @PreAuthorize("hasAuthority('ADMIN')")
   @PostMapping

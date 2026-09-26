@@ -21,4 +21,12 @@ public interface MailApplicationService {
    * @param to 送信先メールアドレス
    */
   void sendPasswordResetCompleteEmail(String to);
+
+  /**
+   * アカウント作成のお知らせ（ウェルカム）メールを送信する。
+   *
+   * @param to 送信先メールアドレス
+   * @param userName ユーザー名
+   */
+  void sendWelcomeEmail(String to, String userName);
 }
