@@ -34,6 +34,11 @@ public class MailApplicationServiceImpl implements MailApplicationService {
     send(to, MailTemplate.PASSWORD_RESET_COMPLETE, to);
   }
 
+  @Override
+  public void sendWelcomeEmail(String to, String userName) {
+    send(to, MailTemplate.WELCOME, userName, to);
+  }
+
   /**
    * 送信元アドレスを付与してメールを送信する。
    *

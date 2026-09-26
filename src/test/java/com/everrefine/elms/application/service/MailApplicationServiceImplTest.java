@@ -121,4 +121,37 @@ class MailApplicationServiceImplTest {
           captureSentMessage().getText());
     }
   }
+
+  @Nested
+  class ウェルカムメール送信 {
+
+    @Test
+    void 送信元と宛先と件名が設定されること() {
+      mailApplicationService.sendWelcomeEmail("user@example.com", "yamada_taro");
+
+      SimpleMailMessage message = captureSentMessage();
+      assertEquals("test@example.com", message.getFrom());
+      assertEquals("user@example.com", String.join(",", message.getTo()));
+      assertEquals("【Javaエンジニア養成講座】アカウント作成のお知らせ", message.getSubject());
+    }
+
+    @Test
+    void 本文がユーザー名とメールアドレスを含む定型文であること() {
+      mailApplicationService.sendWelcomeEmail("user@example.com", "yamada_taro");
+
+      assertEquals(
+          """
+          Javaエンジニア養成講座をご利用いただきありがとうございます。
+
+          アカウントが作成されました。
+
+          ユーザー名：yamada_taro
+          メールアドレス：user@example.com
+
+          ──────────────────────────────
+          Javaエンジニア養成講座
+          """,
+          captureSentMessage().getText());
+    }
+  }
 }

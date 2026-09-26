@@ -1,5 +1,7 @@
 package com.everrefine.elms.presentation.exception;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -16,12 +18,16 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.http.MediaType;
+import org.springframework.mail.MailSendException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.User;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
 import org.springframework.transaction.annotation.Transactional;
@@ -54,6 +60,14 @@ public class GlobalExceptionHandlerTest {
 
   /** テストデータ作成ヘルパー。 */
   @Autowired private TestDataFactory testData;
+
+  /**
+   * メール送信はSMTPサーバーへの外部依存のため差し替える。
+   *
+   * <p>インターフェースではなく実装クラスを差し替えているのは、Actuatorのメールヘルスチェックが {@code JavaMailSenderImpl}
+   * 型のBeanを要求しており、インターフェースで上書きすると起動に失敗するため。
+   */
+  @MockitoBean private JavaMailSenderImpl mailSender;
 
   /** 検証で使い回す、存在しないID。 */
   private static final UUID MISSING_ID = UUID.fromString("00000000-0000-0000-0000-000000000001");
@@ -550,6 +564,43 @@ public class GlobalExceptionHandlerTest {
                   .contentType(MediaType.TEXT_PLAIN)
                   .content("hello"))
           .andExpect(status().isUnsupportedMediaType());
+    }
+  }
+
+  @Nested
+  class サーバーエラー {
+
+    /**
+     * ウェルカムメールの送信に失敗した場合に500が返ることを検証する。
+     *
+     * <p>メール送信の例外は専用のハンドラを持たず catch-all で500に変換される。その経路で仕様どおりのステータスとエラーコードが返ることを確認する。
+     */
+    @Test
+    void ユーザー作成でウェルカムメールの送信に失敗するとErrorResponse付きでステータス500が返ること() throws Exception {
+      testData.createFeatureFlag("welcome-mail", true);
+      doThrow(new MailSendException("送信に失敗しました"))
+          .when(mailSender)
+          .send(any(SimpleMailMessage.class));
+
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.post("/api/users")
+                  .contentType(MediaType.APPLICATION_JSON)
+                  .content(
+                      """
+                      {
+                        "realName": "山田 太郎",
+                        "userName": "yamada",
+                        "emailAddress": "yamada@example.com",
+                        "password": "password123",
+                        "confirmPassword": "password123",
+                        "thumbnailUrl": null,
+                        "userRole": "GENERAL"
+                      }
+                      """))
+          .andExpect(status().isInternalServerError())
+          .andExpect(jsonPath("$.code").value("INTERNAL_ERROR"))
+          .andExpect(jsonPath("$.message").value("サーバーエラーが発生しました"));
     }
   }
 }
