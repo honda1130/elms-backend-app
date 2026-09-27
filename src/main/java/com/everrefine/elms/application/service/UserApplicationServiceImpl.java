@@ -13,6 +13,7 @@ import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.application.exception.UnauthorizedException;
 import com.everrefine.elms.domain.exception.InvalidValueException;
+import com.everrefine.elms.domain.model.featureflag.FeatureFlagName;
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.ProgressRate;
 import com.everrefine.elms.domain.model.user.User;
@@ -43,9 +44,6 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @AllArgsConstructor
 public class UserApplicationServiceImpl implements UserApplicationService {
-
-  /** ウェルカムメールの送信可否を切り替えるフィーチャーフラグのキー。 */
-  private static final String WELCOME_MAIL_FEATURE_FLAG_KEY = "welcome-mail";
 
   private final UserRepository userRepository;
   private final UserLoginHistoryRepository userLoginHistoryRepository;
@@ -159,7 +157,9 @@ public class UserApplicationServiceImpl implements UserApplicationService {
    * @param user 作成したユーザー
    */
   private void sendWelcomeMailIfEnabled(User user) {
-    if (!featureFlagApplicationService.getFeatureFlag(WELCOME_MAIL_FEATURE_FLAG_KEY).enabled()) {
+    if (featureFlagApplicationService
+        .getFeatureFlag(FeatureFlagName.WELCOME_MAIL.key())
+        .disabled()) {
       return;
     }
     mailApplicationService.sendWelcomeEmail(user.emailAddress().value(), user.userName().value());
