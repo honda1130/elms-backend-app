@@ -13,6 +13,7 @@ import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.application.exception.UnauthorizedException;
 import com.everrefine.elms.domain.exception.InvalidValueException;
+import com.everrefine.elms.domain.model.featureflag.FeatureFlagName;
 import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.ProgressRate;
 import com.everrefine.elms.domain.model.user.User;
@@ -49,6 +50,8 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   private final UserLessonRepository userLessonRepository;
   private final LessonRepository lessonRepository;
   private final UserDomainService userDomainService;
+  private final FeatureFlagApplicationService featureFlagApplicationService;
+  private final MailApplicationService mailApplicationService;
 
   /**
    * CSV出力用に値をエスケープする。
@@ -143,6 +146,23 @@ public class UserApplicationServiceImpl implements UserApplicationService {
     }
 
     userRepository.createUser(user);
+    sendWelcomeMailIfEnabled(user);
+  }
+
+  /**
+   * フィーチャーフラグが有効な場合に、作成したユーザーへウェルカムメールを送信する。
+   *
+   * <p>フラグが未登録の場合は無効として扱い、送信しない。リリース後に問題が起きた際、再デプロイせずに送信を止められるようにするためである。
+   *
+   * @param user 作成したユーザー
+   */
+  private void sendWelcomeMailIfEnabled(User user) {
+    if (featureFlagApplicationService
+        .getFeatureFlag(FeatureFlagName.WELCOME_MAIL.key())
+        .disabled()) {
+      return;
+    }
+    mailApplicationService.sendWelcomeEmail(user.emailAddress().value(), user.userName().value());
   }
 
   @Override

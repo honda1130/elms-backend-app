@@ -6,8 +6,13 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 
 import com.everrefine.elms.application.command.PasswordUpdateCommand;
+import com.everrefine.elms.application.command.UserCreateCommand;
 import com.everrefine.elms.application.command.UserImportCommand;
 import com.everrefine.elms.application.command.UserSearchCommand;
 import com.everrefine.elms.application.dto.UserImportResponseDto;
@@ -15,6 +20,7 @@ import com.everrefine.elms.application.dto.UserPageDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.UnauthorizedException;
 import com.everrefine.elms.domain.model.user.User;
+import com.everrefine.elms.domain.model.user.UserRole;
 import com.everrefine.elms.domain.repository.UserRepository;
 import com.everrefine.elms.presentation.request.PasswordUpdateRequest;
 import com.everrefine.elms.testsupport.TestDataFactory;
@@ -34,12 +40,16 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
 import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.mail.MailSendException;
+import org.springframework.mail.SimpleMailMessage;
+import org.springframework.mail.javamail.JavaMailSenderImpl;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
@@ -49,6 +59,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -71,6 +83,13 @@ class UserApplicationServiceImplTest {
   @Autowired private JdbcTemplate jdbcTemplate;
 
   @Autowired private UserRepository userRepository;
+
+  /**
+   * メール送信を実際には行わないようにモックへ差し替える。
+   *
+   * <p>インターフェースではなく実装クラスを差し替えているのは、Actuatorのメールヘルスチェックが {@code JavaMailSenderImpl} を要求するためである。
+   */
+  @MockitoBean private JavaMailSenderImpl mailSender;
 
   @BeforeEach
   void deleteUsers() {
@@ -498,6 +517,135 @@ class UserApplicationServiceImplTest {
 
       // Assert
       assertEquals(new BigDecimal("0.0"), userPageDto.userDtos().getFirst().progressRate());
+    }
+  }
+
+  @Nested
+  class ユーザー作成 {
+
+    /** ユーザー作成コマンドを組み立てる。 */
+    private UserCreateCommand createCommand() {
+      return new UserCreateCommand(
+          null,
+          "山田 太郎",
+          "yamada_taro",
+          "yamada@example.com",
+          "password123",
+          "password123",
+          null,
+          UserRole.GENERAL);
+    }
+
+    /**
+     * フラグが有効な場合に、作成したユーザー宛てにウェルカムメールが送信されることを検証する。
+     *
+     * <p>件名と本文の文面は {@link MailApplicationServiceImplTest} で検証しているため、ここでは宛先のみを確認する。
+     */
+    @Test
+    void フラグが有効なときユーザーが作成され作成したユーザー宛てにウェルカムメールが送信されること() {
+      testData.createFeatureFlag("welcome-mail", true);
+
+      userApplicationService.createUser(createCommand());
+
+      Integer count =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM users WHERE email_address = ?",
+              Integer.class,
+              "yamada@example.com");
+      assertEquals(1, count);
+      ArgumentCaptor<SimpleMailMessage> captor = ArgumentCaptor.forClass(SimpleMailMessage.class);
+      verify(mailSender).send(captor.capture());
+      assertArrayEquals(new String[] {"yamada@example.com"}, captor.getValue().getTo());
+    }
+
+    @Test
+    void フラグが無効なときウェルカムメールが送信されないこと() {
+      testData.createFeatureFlag("welcome-mail", false);
+
+      userApplicationService.createUser(createCommand());
+
+      Integer count =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM users WHERE email_address = ?",
+              Integer.class,
+              "yamada@example.com");
+      assertEquals(1, count);
+      verify(mailSender, never()).send(any(SimpleMailMessage.class));
+    }
+
+    /**
+     * フラグが未登録の場合に送信されないことを検証する。
+     *
+     * <p>未登録のキーは無効として扱う仕様であり、フラグが未作成の状態で送信されてしまわないことを確認する。
+     */
+    @Test
+    void フラグが未登録のときウェルカムメールが送信されないこと() {
+      jdbcTemplate.update("DELETE FROM feature_flags WHERE feature_flag_key = ?", "welcome-mail");
+
+      userApplicationService.createUser(createCommand());
+
+      Integer count =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM users WHERE email_address = ?",
+              Integer.class,
+              "yamada@example.com");
+      assertEquals(1, count);
+      verify(mailSender, never()).send(any(SimpleMailMessage.class));
+    }
+
+    /**
+     * メール送信に失敗した場合に、ユーザー作成もロールバックされることを検証する。
+     *
+     * <p>テストメソッドのトランザクション内ではサービスのトランザクションがそれに参加し、ロールバックがテスト終了時まで行われないため、{@code NOT_SUPPORTED}
+     * でテスト側のトランザクションを無効にして実際のロールバックを確認する。テスト側のトランザクションが無いぶん、変更したフィーチャーフラグは後続テストに影響しないよう最後に戻す。
+     */
+    @Test
+    @Transactional(propagation = Propagation.NOT_SUPPORTED)
+    void ウェルカムメールの送信に失敗するとユーザーが作成されないこと() {
+      testData.createFeatureFlag("welcome-mail", true);
+      doThrow(new MailSendException("送信に失敗しました"))
+          .when(mailSender)
+          .send(any(SimpleMailMessage.class));
+
+      try {
+        assertThrows(
+            MailSendException.class, () -> userApplicationService.createUser(createCommand()));
+
+        Integer count =
+            jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM users WHERE email_address = ?",
+                Integer.class,
+                "yamada@example.com");
+        assertEquals(0, count);
+      } finally {
+        jdbcTemplate.update(
+            "UPDATE feature_flags SET enabled = FALSE WHERE feature_flag_key = ?", "welcome-mail");
+      }
+    }
+
+    @Test
+    void パスワードが一致しない場合にBadRequestExceptionが投げられメールも送信されないこと() {
+      testData.createFeatureFlag("welcome-mail", true);
+      UserCreateCommand command =
+          new UserCreateCommand(
+              null,
+              "山田 太郎",
+              "yamada_taro",
+              "yamada@example.com",
+              "password123",
+              "password456",
+              null,
+              UserRole.GENERAL);
+
+      assertThrows(BadRequestException.class, () -> userApplicationService.createUser(command));
+
+      Integer count =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM users WHERE email_address = ?",
+              Integer.class,
+              "yamada@example.com");
+      assertEquals(0, count);
+      verify(mailSender, never()).send(any(SimpleMailMessage.class));
     }
   }
 }

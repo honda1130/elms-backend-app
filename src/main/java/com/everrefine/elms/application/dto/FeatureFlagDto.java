@@ -27,4 +27,13 @@ public record FeatureFlagDto(
   public static FeatureFlagDto disabled(String featureFlagKey) {
     return new FeatureFlagDto(featureFlagKey, false);
   }
+
+  /**
+   * 機能が無効かどうかを判定する。
+   *
+   * @return 機能が無効ならtrue
+   */
+  public boolean disabled() {
+    return !enabled;
+  }
 }
