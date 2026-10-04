@@ -2,6 +2,7 @@ package com.everrefine.elms.application.service;
 
 import com.everrefine.elms.application.command.PasswordResetConfirmCommand;
 import com.everrefine.elms.application.command.PasswordResetRequestCommand;
+import com.everrefine.elms.application.dto.PasswordResetTokenDeletionDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.domain.exception.InvalidValueException;
 import com.everrefine.elms.domain.model.passwordreset.PasswordResetToken;
@@ -9,6 +10,7 @@ import com.everrefine.elms.domain.model.user.EmailAddress;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.PasswordResetTokenRepository;
 import com.everrefine.elms.domain.repository.UserRepository;
+import java.time.LocalDateTime;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -72,5 +74,12 @@ public class PasswordResetApplicationServiceImpl implements PasswordResetApplica
     mailApplicationService.sendPasswordResetCompleteEmail(emailAddress);
 
     return emailAddress;
+  }
+
+  @Override
+  @Transactional
+  public PasswordResetTokenDeletionDto deleteExpiredTokens(LocalDateTime baseTime) {
+    return new PasswordResetTokenDeletionDto(
+        passwordResetTokenRepository.deleteExpiredTokens(baseTime));
   }
 }

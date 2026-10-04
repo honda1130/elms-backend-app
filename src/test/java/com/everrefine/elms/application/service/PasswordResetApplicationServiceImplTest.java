@@ -2,16 +2,19 @@ package com.everrefine.elms.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 
 import com.everrefine.elms.application.command.PasswordResetConfirmCommand;
 import com.everrefine.elms.application.command.PasswordResetRequestCommand;
+import com.everrefine.elms.application.dto.PasswordResetTokenDeletionDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.testsupport.TestDataFactory;
 import java.time.LocalDateTime;
@@ -215,6 +218,101 @@ class PasswordResetApplicationServiceImplTest {
               LocalDateTime.class,
               "keep-token");
       assertNull(usedAt);
+    }
+  }
+
+  @Nested
+  class 期限切れトークン削除 {
+
+    /** 削除の基準時刻。境界値を検証するため固定値にする。 */
+    private static final LocalDateTime BASE_TIME = LocalDateTime.of(2026, 1, 1, 0, 30);
+
+    /** 指定したトークン文字列のレコードが存在するかを取得する。 */
+    private boolean existsToken(String token) {
+      Integer count =
+          jdbcTemplate.queryForObject(
+              "SELECT COUNT(*) FROM password_reset_tokens WHERE token = ?", Integer.class, token);
+      return count != null && count > 0;
+    }
+
+    @Test
+    void 期限切れの未使用トークンが削除されること() {
+      UUID userId =
+          testData.createUser("expired@example.com", "password123", "山田 太郎", "yamada", "GENERAL");
+      testData.createPasswordResetToken(
+          userId, "expired-unused-token", BASE_TIME.minusSeconds(1), null);
+
+      passwordResetApplicationService.deleteExpiredTokens(BASE_TIME);
+
+      assertFalse(existsToken("expired-unused-token"));
+    }
+
+    @Test
+    void 期限切れの使用済みトークンが削除されること() {
+      UUID userId =
+          testData.createUser("expired@example.com", "password123", "山田 太郎", "yamada", "GENERAL");
+      testData.createPasswordResetToken(
+          userId, "expired-used-token", BASE_TIME.minusSeconds(1), BASE_TIME.minusMinutes(10));
+
+      passwordResetApplicationService.deleteExpiredTokens(BASE_TIME);
+
+      assertFalse(existsToken("expired-used-token"));
+    }
+
+    @Test
+    void 期限内のトークンは削除されないこと() {
+      UUID userId =
+          testData.createUser("active@example.com", "password123", "山田 太郎", "yamada", "GENERAL");
+      testData.createPasswordResetToken(userId, "active-token", BASE_TIME.plusSeconds(1), null);
+
+      passwordResetApplicationService.deleteExpiredTokens(BASE_TIME);
+
+      assertTrue(existsToken("active-token"));
+    }
+
+    /**
+     * 有効期限が基準時刻と同一のトークンは削除されないことを検証する。
+     *
+     * <p>{@code PasswordResetToken#isExpired()}
+     * は現在時刻が有効期限より後の場合のみ期限切れと判定するため、有効期限ちょうどのトークンはまだ有効である。
+     */
+    @Test
+    void 有効期限が基準時刻と同一のトークンは削除されないこと() {
+      UUID userId =
+          testData.createUser("boundary@example.com", "password123", "山田 太郎", "yamada", "GENERAL");
+      testData.createPasswordResetToken(userId, "boundary-token", BASE_TIME, null);
+
+      passwordResetApplicationService.deleteExpiredTokens(BASE_TIME);
+
+      assertTrue(existsToken("boundary-token"));
+    }
+
+    @Test
+    void 削除した件数が返ること() {
+      UUID userId =
+          testData.createUser("count@example.com", "password123", "山田 太郎", "yamada", "GENERAL");
+      testData.createPasswordResetToken(userId, "expired-token-1", BASE_TIME.minusMinutes(1), null);
+      testData.createPasswordResetToken(
+          userId, "expired-token-2", BASE_TIME.minusDays(1), BASE_TIME.minusDays(1));
+      testData.createPasswordResetToken(userId, "active-token", BASE_TIME.plusMinutes(1), null);
+
+      PasswordResetTokenDeletionDto result =
+          passwordResetApplicationService.deleteExpiredTokens(BASE_TIME);
+
+      assertEquals(2, result.deletedCount());
+    }
+
+    @Test
+    void 削除対象が無い場合は0件が返ること() {
+      UUID userId =
+          testData.createUser("none@example.com", "password123", "山田 太郎", "yamada", "GENERAL");
+      testData.createPasswordResetToken(userId, "active-token", BASE_TIME.plusMinutes(1), null);
+
+      PasswordResetTokenDeletionDto result =
+          passwordResetApplicationService.deleteExpiredTokens(BASE_TIME);
+
+      assertEquals(0, result.deletedCount());
+      assertTrue(existsToken("active-token"));
     }
   }
 }
