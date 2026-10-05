@@ -42,8 +42,8 @@ class DeleteExpiredPasswordResetTokensSchedulerTest {
 
       scheduler.deleteExpiredPasswordResetTokens();
 
-      assertTrue(output.getOut().contains("期限切れパスワード再設定トークンの削除バッチを実行します。基準時刻: "));
-      assertTrue(output.getOut().contains("期限切れパスワード再設定トークンの削除バッチの実行が完了しました。削除件数: 3件"));
+      assertTrue(output.getOut().contains("期限切れパスワードリセットトークンの削除バッチを実行します。基準時刻: "));
+      assertTrue(output.getOut().contains("期限切れパスワードリセットトークンの削除バッチの実行が完了しました。削除件数: 3件"));
     }
 
     @Test
@@ -53,7 +53,7 @@ class DeleteExpiredPasswordResetTokensSchedulerTest {
 
       scheduler.deleteExpiredPasswordResetTokens();
 
-      assertTrue(output.getOut().contains("期限切れパスワード再設定トークンの削除バッチの実行が完了しました。削除件数: 0件"));
+      assertTrue(output.getOut().contains("期限切れパスワードリセットトークンの削除バッチの実行が完了しました。削除件数: 0件"));
     }
 
     @Test
@@ -82,7 +82,7 @@ class DeleteExpiredPasswordResetTokensSchedulerTest {
               .anyMatch(
                   line ->
                       line.contains("ERROR")
-                          && line.contains("期限切れパスワード再設定トークンの削除バッチの実行に失敗しました。")));
+                          && line.contains("期限切れパスワードリセットトークンの削除バッチの実行に失敗しました。")));
       assertTrue(output.getOut().contains("DataAccessResourceFailureException"));
     }
   }

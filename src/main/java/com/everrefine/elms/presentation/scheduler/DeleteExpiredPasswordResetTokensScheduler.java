@@ -27,14 +27,14 @@ public class DeleteExpiredPasswordResetTokensScheduler {
   @Scheduled(cron = "0 30 0 * * *", zone = "Asia/Tokyo")
   public void deleteExpiredPasswordResetTokens() {
     LocalDateTime baseTime = LocalDateTime.now();
-    log.info("期限切れパスワード再設定トークンの削除バッチを実行します。基準時刻: {}", baseTime);
+    log.info("期限切れパスワードリセットトークンの削除バッチを実行します。基準時刻: {}", baseTime);
 
     try {
       PasswordResetTokenDeletionDto result =
           passwordResetApplicationService.deleteExpiredTokens(baseTime);
-      log.info("期限切れパスワード再設定トークンの削除バッチの実行が完了しました。削除件数: {}件", result.deletedCount());
+      log.info("期限切れパスワードリセットトークンの削除バッチの実行が完了しました。削除件数: {}件", result.deletedCount());
     } catch (RuntimeException e) {
-      log.error("期限切れパスワード再設定トークンの削除バッチの実行に失敗しました。", e);
+      log.error("期限切れパスワードリセットトークンの削除バッチの実行に失敗しました。", e);
     }
   }
 }
