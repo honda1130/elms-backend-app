@@ -12,6 +12,7 @@ import com.everrefine.elms.application.dto.UserPageDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.application.exception.UnauthorizedException;
+import com.everrefine.elms.application.util.CsvUtils;
 import com.everrefine.elms.domain.exception.InvalidValueException;
 import com.everrefine.elms.domain.model.featureflag.FeatureFlagName;
 import com.everrefine.elms.domain.model.user.EmailAddress;
@@ -52,27 +53,6 @@ public class UserApplicationServiceImpl implements UserApplicationService {
   private final UserDomainService userDomainService;
   private final FeatureFlagApplicationService featureFlagApplicationService;
   private final MailApplicationService mailApplicationService;
-
-  /**
-   * CSV出力用に値をエスケープする。
-   *
-   * <p>値にカンマ、ダブルクォーテーション、改行があった場合のエスケープ処理。
-   *
-   * @param value エスケープ対象の文字列
-   * @return エスケープ後の文字列
-   */
-  private String escape(String value) {
-    if (value == null) {
-      return "";
-    }
-    if (value.contains(",")
-        || value.contains("\"")
-        || value.contains("\n")
-        || value.contains("\r")) {
-      return "\"" + value.replace("\"", "\"\"") + "\"";
-    }
-    return value;
-  }
 
   @Override
   @Transactional(readOnly = true)
@@ -271,14 +251,16 @@ public class UserApplicationServiceImpl implements UserApplicationService {
       DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
       for (UserDto userDto : userDtos) {
         String[] user = {
-          escape(String.valueOf(userDto.id())),
-          escape(userDto.userRole()),
-          escape(userDto.realName()),
-          escape(userDto.emailAddress()),
-          escape(userDto.userName()),
-          escape(userDto.createdAt().format(formatter)),
-          userDto.lastLoginAt() == null ? "" : escape(userDto.lastLoginAt().format(formatter)),
-          escape(userDto.progressRate().toString() + "%")
+          CsvUtils.escape(String.valueOf(userDto.id())),
+          CsvUtils.escape(userDto.userRole()),
+          CsvUtils.escape(userDto.realName()),
+          CsvUtils.escape(userDto.emailAddress()),
+          CsvUtils.escape(userDto.userName()),
+          CsvUtils.escape(userDto.createdAt().format(formatter)),
+          userDto.lastLoginAt() == null
+              ? ""
+              : CsvUtils.escape(userDto.lastLoginAt().format(formatter)),
+          CsvUtils.escape(userDto.progressRate().toString() + "%")
         };
         file.println(String.join(",", user));
       }

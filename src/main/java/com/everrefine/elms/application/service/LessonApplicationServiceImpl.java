@@ -14,6 +14,7 @@ import com.everrefine.elms.application.dto.LessonTagSearchResultDto;
 import com.everrefine.elms.application.dto.LessonWithCourseAndLessonGroupDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
+import com.everrefine.elms.application.util.CsvUtils;
 import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
@@ -62,27 +63,6 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   private final LessonDomainService lessonDomainService;
   private final TagRepository tagRepository;
   private final LessonTagRepository lessonTagRepository;
-
-  /**
-   * CSV出力用に値をエスケープする。
-   *
-   * <p>値にカンマ、ダブルクォーテーション、改行があった場合のエスケープ処理。
-   *
-   * @param value エスケープ対象の文字列
-   * @return エスケープ後の文字列
-   */
-  private String escape(String value) {
-    if (value == null) {
-      return "";
-    }
-    if (value.contains(",")
-        || value.contains("\"")
-        || value.contains("\n")
-        || value.contains("\r")) {
-      return "\"" + value.replace("\"", "\"\"") + "\"";
-    }
-    return value;
-  }
 
   @Override
   @Transactional(readOnly = true)
@@ -394,13 +374,13 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
       // 中身をセットする ( 1レッスンごとに改行 )
       for (LessonWithCourseAndLessonGroupDto dto : dtos) {
         String[] lessons = {
-          escape(String.valueOf(dto.courseId())),
-          escape(dto.courseTitle()),
-          escape(String.valueOf(dto.lessonGroupId())),
-          escape(dto.lessonGroupTitle()),
-          escape(String.valueOf(dto.lessonId())),
-          escape(dto.lessonTitle()),
-          escape(dto.videoUrl())
+          CsvUtils.escape(String.valueOf(dto.courseId())),
+          CsvUtils.escape(dto.courseTitle()),
+          CsvUtils.escape(String.valueOf(dto.lessonGroupId())),
+          CsvUtils.escape(dto.lessonGroupTitle()),
+          CsvUtils.escape(String.valueOf(dto.lessonId())),
+          CsvUtils.escape(dto.lessonTitle()),
+          CsvUtils.escape(dto.videoUrl())
         };
         file.println(String.join(",", lessons));
       }
