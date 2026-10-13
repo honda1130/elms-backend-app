@@ -11,17 +11,15 @@ import com.everrefine.elms.application.dto.NewsPageDto;
 import com.everrefine.elms.presentation.request.NewsCreateRequest;
 import com.everrefine.elms.presentation.request.NewsSearchRequest;
 import com.everrefine.elms.presentation.request.NewsUpdateRequest;
+import com.everrefine.elms.testsupport.CsvTestUtils;
 import com.everrefine.elms.testsupport.TestDataFactory;
-import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
@@ -188,22 +186,6 @@ public class NewsApplicationServiceImplTest {
 
     private static final String[] HEADER = {"お知らせID", "タイトル", "本文", "作成日時", "更新日時"};
 
-    /** CSVを読み込み、先頭のBOMを除いた全行を返す。 */
-    private List<String[]> readCsvRows(Resource csv) throws IOException, CsvValidationException {
-      List<String[]> rows = new ArrayList<>();
-      try (CSVReader csvReader =
-          new CSVReader(new InputStreamReader(csv.getInputStream(), StandardCharsets.UTF_8))) {
-        String[] row;
-        while ((row = csvReader.readNext()) != null) {
-          rows.add(row);
-        }
-      }
-      if (!rows.isEmpty() && rows.get(0)[0].startsWith("\uFEFF")) {
-        rows.get(0)[0] = rows.get(0)[0].substring(1);
-      }
-      return rows;
-    }
-
     @Test
     void お知らせ全件が作成日時の降順でCSV出力されること() throws IOException, CsvValidationException {
       // Arrange
@@ -217,7 +199,7 @@ public class NewsApplicationServiceImplTest {
       DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
 
       // Act
-      List<String[]> rows = readCsvRows(newsApplicationService.exportNewsCsv());
+      List<String[]> rows = CsvTestUtils.readCsvRows(newsApplicationService.exportNewsCsv());
 
       // Assert
       assertEquals(4, rows.size());
@@ -264,7 +246,7 @@ public class NewsApplicationServiceImplTest {
           List.of(id1, id2, id3).stream().map(String::valueOf).sorted().toList();
 
       // Act
-      List<String[]> rows = readCsvRows(newsApplicationService.exportNewsCsv());
+      List<String[]> rows = CsvTestUtils.readCsvRows(newsApplicationService.exportNewsCsv());
 
       // Assert
       assertEquals(4, rows.size());
@@ -281,7 +263,7 @@ public class NewsApplicationServiceImplTest {
       // Act
       Resource csv = newsApplicationService.exportNewsCsv();
       String csvText = new String(csv.getContentAsByteArray(), StandardCharsets.UTF_8);
-      List<String[]> rows = readCsvRows(csv);
+      List<String[]> rows = CsvTestUtils.readCsvRows(csv);
 
       // Assert
       // 生のCSV文字列がエスケープ規則どおりであること
@@ -300,7 +282,7 @@ public class NewsApplicationServiceImplTest {
       jdbcTemplate.execute("DELETE FROM news");
 
       // Act
-      List<String[]> rows = readCsvRows(newsApplicationService.exportNewsCsv());
+      List<String[]> rows = CsvTestUtils.readCsvRows(newsApplicationService.exportNewsCsv());
 
       // Assert
       assertEquals(1, rows.size());
@@ -331,7 +313,7 @@ public class NewsApplicationServiceImplTest {
       }
 
       // Act
-      List<String[]> rows = readCsvRows(newsApplicationService.exportNewsCsv());
+      List<String[]> rows = CsvTestUtils.readCsvRows(newsApplicationService.exportNewsCsv());
 
       // Assert
       assertEquals(36, rows.size());

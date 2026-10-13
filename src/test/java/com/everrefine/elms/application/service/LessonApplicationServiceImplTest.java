@@ -29,11 +29,10 @@ import com.everrefine.elms.presentation.request.LessonOrderUpdateRequest;
 import com.everrefine.elms.presentation.request.LessonTagRequest;
 import com.everrefine.elms.presentation.request.LessonTagSearchRequest;
 import com.everrefine.elms.presentation.request.LessonUpdateRequest;
+import com.everrefine.elms.testsupport.CsvTestUtils;
 import com.everrefine.elms.testsupport.TestDataFactory;
-import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -46,7 +45,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.context.ActiveProfiles;
@@ -343,22 +341,6 @@ public class LessonApplicationServiceImplTest {
       "コースID", "コース名", "レッスングループID", "レッスングループ名", "レッスンID", "レッスンタイトル", "レッスンの動画URL"
     };
 
-    /** CSVを読み込み、先頭のBOMを除いた全行を返す。 */
-    private List<String[]> readCsvRows(Resource csv) throws IOException, CsvValidationException {
-      List<String[]> rows = new ArrayList<>();
-      try (CSVReader csvReader =
-          new CSVReader(new InputStreamReader(csv.getInputStream(), StandardCharsets.UTF_8))) {
-        String[] row;
-        while ((row = csvReader.readNext()) != null) {
-          rows.add(row);
-        }
-      }
-      if (!rows.isEmpty() && rows.get(0)[0].startsWith("\uFEFF")) {
-        rows.get(0)[0] = rows.get(0)[0].substring(1);
-      }
-      return rows;
-    }
-
     @Test
     void レッスン情報がコースとグループとレッスンの並び順でCSV出力されること() throws IOException, CsvValidationException {
       // Arrange
@@ -393,7 +375,8 @@ public class LessonApplicationServiceImplTest {
               "https://example.com/1a1");
 
       // Act
-      List<String[]> rows = readCsvRows(lessonApplicationService.exportAllLessonsCsv());
+      List<String[]> rows =
+          CsvTestUtils.readCsvRows(lessonApplicationService.exportAllLessonsCsv());
 
       // Assert
       assertEquals(5, rows.size());
@@ -425,7 +408,8 @@ public class LessonApplicationServiceImplTest {
           testData.createLesson(groupId, courseId, new BigDecimal("1"), "レッスン,\"1\"", "内容", null);
 
       // Act
-      List<String[]> rows = readCsvRows(lessonApplicationService.exportAllLessonsCsv());
+      List<String[]> rows =
+          CsvTestUtils.readCsvRows(lessonApplicationService.exportAllLessonsCsv());
 
       // Assert
       assertEquals(2, rows.size());
@@ -448,7 +432,8 @@ public class LessonApplicationServiceImplTest {
       jdbcTemplate.execute("DELETE FROM courses");
 
       // Act
-      List<String[]> rows = readCsvRows(lessonApplicationService.exportAllLessonsCsv());
+      List<String[]> rows =
+          CsvTestUtils.readCsvRows(lessonApplicationService.exportAllLessonsCsv());
 
       // Assert
       assertEquals(1, rows.size());

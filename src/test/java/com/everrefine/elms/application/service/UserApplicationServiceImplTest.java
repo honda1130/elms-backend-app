@@ -23,12 +23,11 @@ import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.model.user.UserRole;
 import com.everrefine.elms.domain.repository.UserRepository;
 import com.everrefine.elms.presentation.request.PasswordUpdateRequest;
+import com.everrefine.elms.testsupport.CsvTestUtils;
 import com.everrefine.elms.testsupport.TestDataFactory;
-import com.opencsv.CSVReader;
 import com.opencsv.exceptions.CsvValidationException;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
-import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
@@ -149,19 +148,12 @@ class UserApplicationServiceImplTest {
       Resource usersCsv = userApplicationService.exportUsersCsv();
 
       // Assert
-      CSVReader csvReader =
-          new CSVReader(new InputStreamReader(usersCsv.getInputStream(), StandardCharsets.UTF_8));
+      List<String[]> rows = CsvTestUtils.readCsvRows(usersCsv);
 
-      String[] header = csvReader.readNext();
-      if (header[0].startsWith("\uFEFF")) {
-        header[0] = header[0].substring(1);
-      }
-
-      assertNotNull(header);
+      assertEquals(3, rows.size());
       assertArrayEquals(
           new String[] {"ユーザーID", "権限", "氏名", "メールアドレス", "ユーザー名", "作成日時", "最終ログイン日時", "進捗率"},
-          header);
-      String[] row1 = csvReader.readNext();
+          rows.get(0));
       assertArrayEquals(
           new String[] {
             String.valueOf(userId1),
@@ -173,8 +165,7 @@ class UserApplicationServiceImplTest {
             dateTimeFormat1,
             "0.0%"
           },
-          row1);
-      String[] row2 = csvReader.readNext();
+          rows.get(1));
       assertArrayEquals(
           new String[] {
             String.valueOf(userId2),
@@ -186,7 +177,22 @@ class UserApplicationServiceImplTest {
             dateTimeFormat2,
             "0.0%"
           },
-          row2);
+          rows.get(2));
+    }
+
+    @Test
+    void ユーザーが0件の場合はヘッダー行のみ出力されること() throws IOException, CsvValidationException {
+      // Arrange（@BeforeEach でユーザーは全件削除済み）
+
+      // Act
+      Resource usersCsv = userApplicationService.exportUsersCsv();
+
+      // Assert
+      List<String[]> rows = CsvTestUtils.readCsvRows(usersCsv);
+      assertEquals(1, rows.size());
+      assertArrayEquals(
+          new String[] {"ユーザーID", "権限", "氏名", "メールアドレス", "ユーザー名", "作成日時", "最終ログイン日時", "進捗率"},
+          rows.get(0));
     }
   }
 

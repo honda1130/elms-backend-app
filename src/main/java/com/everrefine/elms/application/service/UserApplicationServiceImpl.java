@@ -12,7 +12,7 @@ import com.everrefine.elms.application.dto.UserPageDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.application.exception.UnauthorizedException;
-import com.everrefine.elms.application.util.CsvUtils;
+import com.everrefine.elms.application.util.CsvExportUtils;
 import com.everrefine.elms.domain.exception.InvalidValueException;
 import com.everrefine.elms.domain.model.featureflag.FeatureFlagName;
 import com.everrefine.elms.domain.model.user.EmailAddress;
@@ -24,18 +24,12 @@ import com.everrefine.elms.domain.repository.UserLessonRepository;
 import com.everrefine.elms.domain.repository.UserLoginHistoryRepository;
 import com.everrefine.elms.domain.repository.UserRepository;
 import com.everrefine.elms.domain.service.UserDomainService;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
-import java.nio.charset.StandardCharsets;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
@@ -203,19 +197,6 @@ public class UserApplicationServiceImpl implements UserApplicationService {
 
     List<User> users = userRepository.findAllByOrderByCreatedAtAscIdAsc();
 
-    if (users.isEmpty()) {
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      try (PrintWriter file =
-          new PrintWriter(
-              new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8)))) {
-        file.print('\uFEFF');
-        file.println(String.join(",", header));
-      } catch (Exception e) {
-        throw new RuntimeException("CSVファイルの作成に失敗しました", e);
-      }
-      return new ByteArrayResource(baos.toByteArray());
-    }
-
     // ユーザーIDと、そのユーザーのログイン履歴のMap
     List<UUID> userIds = users.stream().map(User::id).toList();
     Map<UUID, UserLoginHistory> loginHistoryMap =
@@ -234,40 +215,26 @@ public class UserApplicationServiceImpl implements UserApplicationService {
                   return UserDto.from(user, userLoginHistory, progressRate.toBigDecimal());
                 })
             .toList();
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
 
-    try (
-    // 書き込むファイルを作成
-    PrintWriter file =
-        new PrintWriter(
-            new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))); ) {
-      // Excelで開いたときの文字化けを防ぐ
-      file.print('\uFEFF');
-
-      // ヘッダーをセットする
-      file.println(String.join(",", header));
-
-      // 中身をセットする ( 1ユーザーごとに改行 )
-      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
-      for (UserDto userDto : userDtos) {
-        String[] user = {
-          CsvUtils.escape(String.valueOf(userDto.id())),
-          CsvUtils.escape(userDto.userRole()),
-          CsvUtils.escape(userDto.realName()),
-          CsvUtils.escape(userDto.emailAddress()),
-          CsvUtils.escape(userDto.userName()),
-          CsvUtils.escape(userDto.createdAt().format(formatter)),
-          userDto.lastLoginAt() == null
-              ? ""
-              : CsvUtils.escape(userDto.lastLoginAt().format(formatter)),
-          CsvUtils.escape(userDto.progressRate().toString() + "%")
-        };
-        file.println(String.join(",", user));
-      }
-    } catch (Exception e) {
-      throw new RuntimeException("CSVファイルの作成に失敗しました", e);
-    }
-    return new ByteArrayResource(baos.toByteArray());
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+    List<String[]> rows =
+        userDtos.stream()
+            .map(
+                userDto ->
+                    new String[] {
+                      String.valueOf(userDto.id()),
+                      userDto.userRole(),
+                      userDto.realName(),
+                      userDto.emailAddress(),
+                      userDto.userName(),
+                      userDto.createdAt().format(formatter),
+                      userDto.lastLoginAt() == null
+                          ? null
+                          : userDto.lastLoginAt().format(formatter),
+                      userDto.progressRate().toString() + "%"
+                    })
+            .toList();
+    return CsvExportUtils.toCsvResource(header, rows);
   }
 
   @Transactional

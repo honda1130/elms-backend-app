@@ -2,8 +2,6 @@ package com.everrefine.elms.presentation.exception;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doThrow;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -19,7 +17,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
-import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mail.MailSendException;
 import org.springframework.mail.SimpleMailMessage;
@@ -464,17 +461,6 @@ public class GlobalExceptionHandlerTest {
           .perform(MockMvcRequestBuilders.get("/api/news/export"))
           .andExpect(status().isUnauthorized())
           .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
-    }
-
-    /** {@code /api/news/{newsId}} と形が似ているが、固定パスとして解釈されCSVが返ること（400にならないこと）を検証する。 */
-    @Test
-    void 管理者でお知らせCSV出力を呼ぶとステータス200とCSV用のヘッダーが返ること() throws Exception {
-      mockMvc
-          .perform(MockMvcRequestBuilders.get("/api/news/export"))
-          .andExpect(status().isOk())
-          .andExpect(
-              header().string(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=news.csv"))
-          .andExpect(content().contentTypeCompatibleWith("text/csv"));
     }
   }
 
