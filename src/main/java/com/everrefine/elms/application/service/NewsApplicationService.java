@@ -6,6 +6,7 @@ import com.everrefine.elms.application.command.NewsUpdateCommand;
 import com.everrefine.elms.application.dto.NewsDto;
 import com.everrefine.elms.application.dto.NewsPageDto;
 import java.util.UUID;
+import org.springframework.core.io.Resource;
 
 /** お知らせアプリケーションサービスのインターフェース。 */
 public interface NewsApplicationService {
@@ -46,4 +47,11 @@ public interface NewsApplicationService {
    * @param newsId お知らせID
    */
   void deleteNewsById(UUID newsId);
+
+  /**
+   * お知らせ全件をCSV形式でエクスポートする。
+   *
+   * @return CSVリソース
+   */
+  Resource exportNewsCsv();
 }

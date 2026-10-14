@@ -65,6 +65,11 @@ public class NewsRepositoryImpl implements NewsRepository {
   }
 
   @Override
+  public List<News> findAllNews() {
+    return newsDao.findAllByOrderByCreatedAtDescIdAsc().stream().map(NewsEntity::toDomain).toList();
+  }
+
+  @Override
   public Optional<News> findNewsById(UUID id) {
     return newsDao.findById(id).map(NewsEntity::toDomain);
   }

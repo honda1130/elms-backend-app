@@ -55,6 +55,13 @@ public interface NewsRepository {
   List<UUID> findNewsIdsBySearchConditions(NewsSearchCondition newsSearchCondition);
 
   /**
+   * お知らせを全件取得する。
+   *
+   * @return お知らせ一覧（作成日時の降順、作成日時が同じ場合はIDの昇順）
+   */
+  List<News> findAllNews();
+
+  /**
    * IDでお知らせを取得する。
    *
    * @param id お知らせID

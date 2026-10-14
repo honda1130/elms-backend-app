@@ -14,6 +14,7 @@ import com.everrefine.elms.application.dto.LessonTagSearchResultDto;
 import com.everrefine.elms.application.dto.LessonWithCourseAndLessonGroupDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
+import com.everrefine.elms.application.util.CsvExportUtils;
 import com.everrefine.elms.domain.model.course.Course;
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroup;
@@ -31,12 +32,7 @@ import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.domain.repository.LessonTagRepository;
 import com.everrefine.elms.domain.repository.TagRepository;
 import com.everrefine.elms.domain.service.LessonDomainService;
-import java.io.BufferedWriter;
-import java.io.ByteArrayOutputStream;
-import java.io.OutputStreamWriter;
-import java.io.PrintWriter;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
@@ -46,7 +42,6 @@ import java.util.UUID;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.AllArgsConstructor;
-import org.springframework.core.io.ByteArrayResource;
 import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -62,27 +57,6 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
   private final LessonDomainService lessonDomainService;
   private final TagRepository tagRepository;
   private final LessonTagRepository lessonTagRepository;
-
-  /**
-   * CSV出力用に値をエスケープする。
-   *
-   * <p>値にカンマ、ダブルクォーテーション、改行があった場合のエスケープ処理。
-   *
-   * @param value エスケープ対象の文字列
-   * @return エスケープ後の文字列
-   */
-  private String escape(String value) {
-    if (value == null) {
-      return "";
-    }
-    if (value.contains(",")
-        || value.contains("\"")
-        || value.contains("\n")
-        || value.contains("\r")) {
-      return "\"" + value.replace("\"", "\"\"") + "\"";
-    }
-    return value;
-  }
 
   @Override
   @Transactional(readOnly = true)
@@ -362,52 +336,22 @@ public class LessonApplicationServiceImpl implements LessonApplicationService {
 
     List<LessonWithCourseAndLessonGroup> allLessons = lessonRepository.findAllLessons();
 
-    if (allLessons.isEmpty()) {
-      ByteArrayOutputStream baos = new ByteArrayOutputStream();
-      try (PrintWriter file =
-          new PrintWriter(
-              new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8)))) {
-        file.print('\uFEFF');
-        file.println(String.join(",", header));
-      } catch (Exception e) {
-        throw new RuntimeException("CSVファイルの作成に失敗しました", e);
-      }
-      return new ByteArrayResource(baos.toByteArray());
-    }
-
-    List<LessonWithCourseAndLessonGroupDto> dtos =
-        allLessons.stream().map(LessonWithCourseAndLessonGroupDto::from).toList();
-
-    ByteArrayOutputStream baos = new ByteArrayOutputStream();
-
-    try (
-    // 書き込むファイルを作成
-    PrintWriter file =
-        new PrintWriter(
-            new BufferedWriter(new OutputStreamWriter(baos, StandardCharsets.UTF_8))); ) {
-      // Excelで開いたときの文字化けを防ぐ
-      file.print('\uFEFF');
-
-      // ヘッダーをセットする
-      file.println(String.join(",", header));
-
-      // 中身をセットする ( 1レッスンごとに改行 )
-      for (LessonWithCourseAndLessonGroupDto dto : dtos) {
-        String[] lessons = {
-          escape(String.valueOf(dto.courseId())),
-          escape(dto.courseTitle()),
-          escape(String.valueOf(dto.lessonGroupId())),
-          escape(dto.lessonGroupTitle()),
-          escape(String.valueOf(dto.lessonId())),
-          escape(dto.lessonTitle()),
-          escape(dto.videoUrl())
-        };
-        file.println(String.join(",", lessons));
-      }
-    } catch (Exception e) {
-      throw new RuntimeException("CSVファイルの作成に失敗しました", e);
-    }
-    return new ByteArrayResource(baos.toByteArray());
+    List<String[]> rows =
+        allLessons.stream()
+            .map(LessonWithCourseAndLessonGroupDto::from)
+            .map(
+                dto ->
+                    new String[] {
+                      String.valueOf(dto.courseId()),
+                      dto.courseTitle(),
+                      String.valueOf(dto.lessonGroupId()),
+                      dto.lessonGroupTitle(),
+                      String.valueOf(dto.lessonId()),
+                      dto.lessonTitle(),
+                      dto.videoUrl()
+                    })
+            .toList();
+    return CsvExportUtils.toCsvResource(header, rows);
   }
 
   @Transactional(readOnly = true)

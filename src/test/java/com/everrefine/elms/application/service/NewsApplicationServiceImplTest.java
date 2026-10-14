@@ -1,5 +1,6 @@
 package com.everrefine.elms.application.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -10,9 +11,16 @@ import com.everrefine.elms.application.dto.NewsPageDto;
 import com.everrefine.elms.presentation.request.NewsCreateRequest;
 import com.everrefine.elms.presentation.request.NewsSearchRequest;
 import com.everrefine.elms.presentation.request.NewsUpdateRequest;
+import com.everrefine.elms.testsupport.CsvTestUtils;
+import com.everrefine.elms.testsupport.TestDataFactory;
+import com.opencsv.exceptions.CsvValidationException;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.sql.Timestamp;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -20,6 +28,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.boot.testcontainers.service.connection.ServiceConnection;
+import org.springframework.core.io.Resource;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
@@ -39,6 +48,9 @@ public class NewsApplicationServiceImplTest {
 
   /** テスト対象のサービスクラス。 */
   @Autowired private NewsApplicationServiceImpl newsApplicationService;
+
+  /** テストデータ作成用のヘルパー。 */
+  @Autowired private TestDataFactory testData;
 
   /** データ検証で使用するためのJdbcTemplate。 */
   @Autowired private JdbcTemplate jdbcTemplate;
@@ -166,6 +178,147 @@ public class NewsApplicationServiceImplTest {
       assertThrows(
           RuntimeException.class,
           () -> newsApplicationService.updateNews(request.toCommand(notExistsId)));
+    }
+  }
+
+  @Nested
+  class お知らせCSV出力 {
+
+    private static final String[] HEADER = {"お知らせID", "タイトル", "本文", "作成日時", "更新日時"};
+
+    @Test
+    void お知らせ全件が作成日時の降順でCSV出力されること() throws IOException, CsvValidationException {
+      // Arrange
+      jdbcTemplate.execute("DELETE FROM news");
+      LocalDateTime dateTime1 = LocalDateTime.of(2026, 1, 1, 9, 0, 0);
+      LocalDateTime dateTime2 = LocalDateTime.of(2026, 2, 1, 10, 30, 15);
+      LocalDateTime dateTime3 = LocalDateTime.of(2026, 3, 1, 23, 59, 59);
+      UUID oldId = testData.createNews("古いお知らせ", "古い本文", dateTime1);
+      UUID middleId = testData.createNews("中間のお知らせ", "中間の本文", dateTime2);
+      UUID newId = testData.createNews("新しいお知らせ", "新しい本文", dateTime3);
+      DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+
+      // Act
+      List<String[]> rows = CsvTestUtils.readCsvRows(newsApplicationService.exportNewsCsv());
+
+      // Assert
+      assertEquals(4, rows.size());
+      assertArrayEquals(HEADER, rows.get(0));
+      assertArrayEquals(
+          new String[] {
+            String.valueOf(newId),
+            "新しいお知らせ",
+            "新しい本文",
+            dateTime3.format(formatter),
+            dateTime3.format(formatter)
+          },
+          rows.get(1));
+      assertArrayEquals(
+          new String[] {
+            String.valueOf(middleId),
+            "中間のお知らせ",
+            "中間の本文",
+            dateTime2.format(formatter),
+            dateTime2.format(formatter)
+          },
+          rows.get(2));
+      assertArrayEquals(
+          new String[] {
+            String.valueOf(oldId),
+            "古いお知らせ",
+            "古い本文",
+            dateTime1.format(formatter),
+            dateTime1.format(formatter)
+          },
+          rows.get(3));
+    }
+
+    @Test
+    void 作成日時が同じお知らせはIDの昇順で出力されること() throws IOException, CsvValidationException {
+      // Arrange
+      jdbcTemplate.execute("DELETE FROM news");
+      LocalDateTime sameDateTime = LocalDateTime.of(2026, 4, 1, 12, 0, 0);
+      UUID id1 = testData.createNews("お知らせA", "本文A", sameDateTime);
+      UUID id2 = testData.createNews("お知らせB", "本文B", sameDateTime);
+      UUID id3 = testData.createNews("お知らせC", "本文C", sameDateTime);
+      // DBのuuid型は符号なしのバイト順で並ぶ。JavaのUUID比較は符号付きのため、文字列（小文字16進）で並べて期待値にする。
+      List<String> expectedIds =
+          List.of(id1, id2, id3).stream().map(String::valueOf).sorted().toList();
+
+      // Act
+      List<String[]> rows = CsvTestUtils.readCsvRows(newsApplicationService.exportNewsCsv());
+
+      // Assert
+      assertEquals(4, rows.size());
+      assertEquals(expectedIds, rows.stream().skip(1).map(row -> row[0]).toList());
+    }
+
+    @Test
+    void カンマとダブルクォートと改行を含む値がエスケープされて出力されること() throws IOException, CsvValidationException {
+      // Arrange
+      jdbcTemplate.execute("DELETE FROM news");
+      LocalDateTime dateTime = LocalDateTime.of(2026, 5, 1, 8, 0, 0);
+      UUID newsId = testData.createNews("タイトル,\"引用\"", "1行目\n2行目,\"3\"", dateTime);
+
+      // Act
+      Resource csv = newsApplicationService.exportNewsCsv();
+      String csvText = new String(csv.getContentAsByteArray(), StandardCharsets.UTF_8);
+      List<String[]> rows = CsvTestUtils.readCsvRows(csv);
+
+      // Assert
+      // 生のCSV文字列がエスケープ規則どおりであること
+      assertTrue(csvText.contains("\"タイトル,\"\"引用\"\"\""));
+      assertTrue(csvText.contains("\"1行目\n2行目,\"\"3\"\"\""));
+      // 読み戻した値が元の値と一致すること
+      assertEquals(2, rows.size());
+      assertEquals(String.valueOf(newsId), rows.get(1)[0]);
+      assertEquals("タイトル,\"引用\"", rows.get(1)[1]);
+      assertEquals("1行目\n2行目,\"3\"", rows.get(1)[2]);
+    }
+
+    @Test
+    void お知らせが0件の場合はヘッダー行のみ出力されること() throws IOException, CsvValidationException {
+      // Arrange
+      jdbcTemplate.execute("DELETE FROM news");
+
+      // Act
+      List<String[]> rows = CsvTestUtils.readCsvRows(newsApplicationService.exportNewsCsv());
+
+      // Assert
+      assertEquals(1, rows.size());
+      assertArrayEquals(HEADER, rows.get(0));
+    }
+
+    @Test
+    void 先頭にUTF8のBOMが付くこと() throws IOException {
+      // Arrange
+      jdbcTemplate.execute("DELETE FROM news");
+
+      // Act
+      byte[] bytes = newsApplicationService.exportNewsCsv().getContentAsByteArray();
+
+      // Assert
+      assertEquals((byte) 0xEF, bytes[0]);
+      assertEquals((byte) 0xBB, bytes[1]);
+      assertEquals((byte) 0xBF, bytes[2]);
+    }
+
+    @Test
+    void 一覧のページサイズを超える件数でも全件出力されること() throws IOException, CsvValidationException {
+      // Arrange
+      jdbcTemplate.execute("DELETE FROM news");
+      LocalDateTime baseDateTime = LocalDateTime.of(2026, 6, 1, 0, 0, 0);
+      for (int i = 0; i < 35; i++) {
+        testData.createNews("お知らせ" + i, "本文" + i, baseDateTime.plusMinutes(i));
+      }
+
+      // Act
+      List<String[]> rows = CsvTestUtils.readCsvRows(newsApplicationService.exportNewsCsv());
+
+      // Assert
+      assertEquals(36, rows.size());
+      assertEquals("お知らせ34", rows.get(1)[1]);
+      assertEquals("お知らせ0", rows.get(35)[1]);
     }
   }
 }

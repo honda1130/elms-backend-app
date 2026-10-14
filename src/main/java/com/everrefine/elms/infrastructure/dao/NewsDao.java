@@ -22,6 +22,8 @@ public interface NewsDao extends CrudRepository<NewsEntity, UUID> {
       """)
   List<NewsEntity> findByIdIn(@Param("ids") List<UUID> ids);
 
+  List<NewsEntity> findAllByOrderByCreatedAtDescIdAsc();
+
   @Query(
       """
       SELECT id

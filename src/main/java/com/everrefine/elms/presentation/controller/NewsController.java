@@ -16,7 +16,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -53,6 +57,28 @@ public class NewsController {
   public NewsPageDto findNews(@Valid NewsSearchRequest newsSearchRequest) {
     NewsSearchCommand newsSearchCommand = newsSearchRequest.toCommand();
     return newsApplicationService.findNews(newsSearchCommand);
+  }
+
+  /**
+   * お知らせ全件をCSVとして出力する。
+   *
+   * @return お知らせCSVファイルのリソース
+   */
+  @Operation(summary = "お知らせCSV出力", description = "お知らせ全件をCSVとして出力します")
+  @ApiResponses({
+    @ApiResponse(responseCode = "200", description = "出力成功"),
+    @ApiResponse(responseCode = "401", description = "認証されていません"),
+    @ApiResponse(responseCode = "403", description = "管理者権限が必要です"),
+    @ApiResponse(responseCode = "500", description = "サーバーエラー（CSV生成失敗を含む）")
+  })
+  @PreAuthorize("hasAuthority('ADMIN')")
+  @GetMapping("/export")
+  public ResponseEntity<Resource> exportNewsCsv() {
+    Resource newsCsv = newsApplicationService.exportNewsCsv();
+    return ResponseEntity.ok()
+        .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=news.csv")
+        .contentType(MediaType.parseMediaType("text/csv"))
+        .body(newsCsv);
   }
 
   /**

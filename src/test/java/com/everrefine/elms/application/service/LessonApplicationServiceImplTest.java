@@ -1,5 +1,6 @@
 package com.everrefine.elms.application.service;
 
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
@@ -28,7 +29,10 @@ import com.everrefine.elms.presentation.request.LessonOrderUpdateRequest;
 import com.everrefine.elms.presentation.request.LessonTagRequest;
 import com.everrefine.elms.presentation.request.LessonTagSearchRequest;
 import com.everrefine.elms.presentation.request.LessonUpdateRequest;
+import com.everrefine.elms.testsupport.CsvTestUtils;
 import com.everrefine.elms.testsupport.TestDataFactory;
+import com.opencsv.exceptions.CsvValidationException;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -327,6 +331,113 @@ public class LessonApplicationServiceImplTest {
       assertEquals("一括登録レッスン3", actualLessons.get(2).get("title"));
       assertEquals("説明3", actualLessons.get(2).get("content"));
       assertNull(actualLessons.get(2).get("video_url"));
+    }
+  }
+
+  @Nested
+  class レッスンCSV出力 {
+
+    private static final String[] HEADER = {
+      "コースID", "コース名", "レッスングループID", "レッスングループ名", "レッスンID", "レッスンタイトル", "レッスンの動画URL"
+    };
+
+    @Test
+    void レッスン情報がコースとグループとレッスンの並び順でCSV出力されること() throws IOException, CsvValidationException {
+      // Arrange
+      jdbcTemplate.execute("DELETE FROM courses");
+      // 作成順と並び順を逆にして、並び順どおりに出力されることを確認する。
+      UUID courseId2 = testData.createCourse(new BigDecimal("2"), "コース2", "説明");
+      UUID courseId1 = testData.createCourse(new BigDecimal("1"), "コース1", "説明");
+      UUID groupId1B = testData.createLessonGroup(courseId1, new BigDecimal("2"), "グループ1B");
+      UUID groupId1A = testData.createLessonGroup(courseId1, new BigDecimal("1"), "グループ1A");
+      UUID groupId2 = testData.createLessonGroup(courseId2, new BigDecimal("1"), "グループ2");
+      UUID lessonId2 =
+          testData.createLesson(
+              groupId2, courseId2, new BigDecimal("1"), "レッスン2", "内容", "https://example.com/2");
+      UUID lessonId1B =
+          testData.createLesson(
+              groupId1B, courseId1, new BigDecimal("1"), "レッスン1B", "内容", "https://example.com/1b");
+      UUID lessonId1A2 =
+          testData.createLesson(
+              groupId1A,
+              courseId1,
+              new BigDecimal("2"),
+              "レッスン1A-2",
+              "内容",
+              "https://example.com/1a2");
+      UUID lessonId1A1 =
+          testData.createLesson(
+              groupId1A,
+              courseId1,
+              new BigDecimal("1"),
+              "レッスン1A-1",
+              "内容",
+              "https://example.com/1a1");
+
+      // Act
+      List<String[]> rows =
+          CsvTestUtils.readCsvRows(lessonApplicationService.exportAllLessonsCsv());
+
+      // Assert
+      assertEquals(5, rows.size());
+      assertArrayEquals(HEADER, rows.get(0));
+      assertArrayEquals(
+          new String[] {
+            String.valueOf(courseId1),
+            "コース1",
+            String.valueOf(groupId1A),
+            "グループ1A",
+            String.valueOf(lessonId1A1),
+            "レッスン1A-1",
+            "https://example.com/1a1"
+          },
+          rows.get(1));
+      assertEquals(String.valueOf(lessonId1A2), rows.get(2)[4]);
+      assertEquals(String.valueOf(lessonId1B), rows.get(3)[4]);
+      assertEquals(String.valueOf(lessonId2), rows.get(4)[4]);
+    }
+
+    @Test
+    void カンマとダブルクォートと改行を含む値がエスケープされ動画URL未設定は空欄で出力されること()
+        throws IOException, CsvValidationException {
+      // Arrange
+      jdbcTemplate.execute("DELETE FROM courses");
+      UUID courseId = testData.createCourse(new BigDecimal("1"), "コース,\"A\"", "説明");
+      UUID groupId = testData.createLessonGroup(courseId, new BigDecimal("1"), "グループ\n1");
+      UUID lessonId =
+          testData.createLesson(groupId, courseId, new BigDecimal("1"), "レッスン,\"1\"", "内容", null);
+
+      // Act
+      List<String[]> rows =
+          CsvTestUtils.readCsvRows(lessonApplicationService.exportAllLessonsCsv());
+
+      // Assert
+      assertEquals(2, rows.size());
+      assertArrayEquals(
+          new String[] {
+            String.valueOf(courseId),
+            "コース,\"A\"",
+            String.valueOf(groupId),
+            "グループ\n1",
+            String.valueOf(lessonId),
+            "レッスン,\"1\"",
+            ""
+          },
+          rows.get(1));
+    }
+
+    @Test
+    void レッスンが0件の場合はヘッダー行のみ出力されること() throws IOException, CsvValidationException {
+      // Arrange
+      jdbcTemplate.execute("DELETE FROM courses");
+
+      // Act
+      List<String[]> rows =
+          CsvTestUtils.readCsvRows(lessonApplicationService.exportAllLessonsCsv());
+
+      // Assert
+      assertEquals(1, rows.size());
+      assertArrayEquals(HEADER, rows.get(0));
     }
   }
 

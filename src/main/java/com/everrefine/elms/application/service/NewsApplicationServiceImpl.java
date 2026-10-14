@@ -6,11 +6,14 @@ import com.everrefine.elms.application.command.NewsUpdateCommand;
 import com.everrefine.elms.application.dto.NewsDto;
 import com.everrefine.elms.application.dto.NewsPageDto;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
+import com.everrefine.elms.application.util.CsvExportUtils;
 import com.everrefine.elms.domain.model.news.News;
 import com.everrefine.elms.domain.repository.NewsRepository;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
+import org.springframework.core.io.Resource;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -69,5 +72,27 @@ public class NewsApplicationServiceImpl implements NewsApplicationService {
   @Transactional
   public void deleteNewsById(UUID newsId) {
     newsRepository.findNewsById(newsId).ifPresent(news -> newsRepository.deleteNewsById(newsId));
+  }
+
+  @Override
+  @Transactional(readOnly = true)
+  public Resource exportNewsCsv() {
+    String[] header = {"お知らせID", "タイトル", "本文", "作成日時", "更新日時"};
+    List<News> newsList = newsRepository.findAllNews();
+
+    DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy/MM/dd HH:mm:ss");
+    List<String[]> rows =
+        newsList.stream()
+            .map(
+                news ->
+                    new String[] {
+                      String.valueOf(news.id()),
+                      news.title().value(),
+                      news.content().value(),
+                      news.createdAt().format(formatter),
+                      news.updatedAt().format(formatter)
+                    })
+            .toList();
+    return CsvExportUtils.toCsvResource(header, rows);
   }
 }

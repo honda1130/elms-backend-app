@@ -271,4 +271,24 @@ public class TestDataFactory {
         enabled);
     return featureFlagId;
   }
+
+  /**
+   * 作成日時を指定してお知らせを作成する。更新日時は作成日時と同じになる。
+   *
+   * @param title タイトル
+   * @param content 本文
+   * @param createdAt 作成日時
+   * @return 作成されたお知らせID
+   */
+  public UUID createNews(String title, String content, LocalDateTime createdAt) {
+    UUID newsId = UUID.randomUUID();
+    jdbcTemplate.update(
+        "INSERT INTO news (id, title, content, created_at, updated_at) VALUES (?, ?, ?, ?, ?)",
+        newsId,
+        title,
+        content,
+        createdAt,
+        createdAt);
+    return newsId;
+  }
 }

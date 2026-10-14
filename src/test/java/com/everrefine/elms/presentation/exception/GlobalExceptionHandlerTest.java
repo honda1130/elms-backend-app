@@ -444,6 +444,24 @@ public class GlobalExceptionHandlerTest {
           .andExpect(status().isUnauthorized())
           .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
     }
+
+    @Test
+    void お知らせCSV出力を一般ユーザーで呼ぶとステータス403が返ること() throws Exception {
+      authenticateAs(adminId, "GENERAL");
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/news/export"))
+          .andExpect(status().isForbidden())
+          .andExpect(jsonPath("$.code").value("FORBIDDEN"));
+    }
+
+    @Test
+    void 未認証でお知らせCSV出力を呼ぶとステータス401が返ること() throws Exception {
+      SecurityContextHolder.clearContext();
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/news/export"))
+          .andExpect(status().isUnauthorized())
+          .andExpect(jsonPath("$.code").value("UNAUTHORIZED"));
+    }
   }
 
   @Nested
