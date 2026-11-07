@@ -4,7 +4,6 @@ import com.everrefine.elms.infrastructure.entity.lesson.LessonEntity;
 import com.everrefine.elms.infrastructure.row.LessonTagSearchRow;
 import com.everrefine.elms.infrastructure.row.LessonWithCourseAndLessonGroupRow;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -15,42 +14,6 @@ import org.springframework.data.repository.query.Param;
 
 /** レッスンのDAOインターフェース。 */
 public interface LessonDao extends CrudRepository<LessonEntity, UUID> {
-
-  @Query(
-      """
-          SELECT * FROM lessons WHERE
-          (CAST(:courseId AS UUID) IS NULL OR course_id = CAST(:courseId AS UUID)) AND
-          (CAST(:lessonGroupId AS UUID) IS NULL OR lesson_group_id = CAST(:lessonGroupId AS UUID)) AND
-          (:title IS NULL OR title LIKE CONCAT('%', :title, '%')) AND
-          (CAST(:createdDateFrom AS DATE) IS NULL OR created_at >= CAST(:createdDateFrom AS DATE)) AND
-          (CAST(:createdDateTo AS DATE) IS NULL OR created_at < CAST(:createdDateTo AS DATE) + INTERVAL '1 day')
-          ORDER BY lesson_order ASC
-          LIMIT :limit OFFSET :offset
-          """)
-  List<LessonEntity> findLessons(
-      @Param("courseId") UUID courseId,
-      @Param("lessonGroupId") UUID lessonGroupId,
-      @Param("title") String title,
-      @Param("createdDateFrom") LocalDate createdDateFrom,
-      @Param("createdDateTo") LocalDate createdDateTo,
-      @Param("limit") int limit,
-      @Param("offset") int offset);
-
-  @Query(
-      """
-          SELECT COUNT(*) FROM lessons WHERE
-          (CAST(:courseId AS UUID) IS NULL OR course_id = CAST(:courseId AS UUID)) AND
-          (CAST(:lessonGroupId AS UUID) IS NULL OR lesson_group_id = CAST(:lessonGroupId AS UUID)) AND
-          (:title IS NULL OR title LIKE CONCAT('%', :title, '%')) AND
-          (CAST(:createdDateFrom AS DATE) IS NULL OR created_at >= CAST(:createdDateFrom AS DATE)) AND
-          (CAST(:createdDateTo AS DATE) IS NULL OR created_at < CAST(:createdDateTo AS DATE) + INTERVAL '1 day')
-          """)
-  int countLessons(
-      @Param("courseId") UUID courseId,
-      @Param("lessonGroupId") UUID lessonGroupId,
-      @Param("title") String title,
-      @Param("createdDateFrom") LocalDate createdDateFrom,
-      @Param("createdDateTo") LocalDate createdDateTo);
 
   @Query(
       """

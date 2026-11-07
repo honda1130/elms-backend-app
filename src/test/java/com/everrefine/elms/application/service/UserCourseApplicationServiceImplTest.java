@@ -93,6 +93,63 @@ public class UserCourseApplicationServiceImplTest {
     }
 
     @Test
+    void レッスンが0件のコースの進捗率が0であること() {
+      UUID userId = testData.createUser("ul-no-lesson@example.com", "p", "次郎", "ulnl", "GENERAL");
+      UUID courseId = testData.createCourse(new BigDecimal("1003"), "UL空コース", "コース説明");
+
+      List<UserCourseDto> result = userCourseApplicationService.findUserCourses(userId);
+
+      assertEquals(new BigDecimal("0.0"), findCourse(result, courseId).courseProgress());
+    }
+
+    @Test
+    void 完了したレッスンが0件のコースの進捗率が0であること() {
+      UUID userId = testData.createUser("ul-no-done@example.com", "p", "三郎", "ulnd2", "GENERAL");
+      UUID courseId = testData.createCourse(new BigDecimal("1004"), "UL未受講コース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal(1), "UL未受講コースのグループ");
+      createLesson(lessonGroupId, courseId, "1");
+      createLesson(lessonGroupId, courseId, "2");
+
+      List<UserCourseDto> result = userCourseApplicationService.findUserCourses(userId);
+
+      assertEquals(new BigDecimal("0.0"), findCourse(result, courseId).courseProgress());
+    }
+
+    @Test
+    void 他のユーザーが完了したレッスンは進捗率に含まれないこと() {
+      UUID userId = testData.createUser("ul-self@example.com", "p", "五郎", "ulself", "GENERAL");
+      UUID otherUserId =
+          testData.createUser("ul-other@example.com", "p", "六郎", "ulother", "GENERAL");
+      UUID courseId = testData.createCourse(new BigDecimal("1005"), "UL共有コース", "コース説明");
+      UUID lessonGroupId = testData.createLessonGroup(courseId, new BigDecimal(1), "UL共有コースのグループ");
+      UUID lessonId1 = createLesson(lessonGroupId, courseId, "1");
+      UUID lessonId2 = createLesson(lessonGroupId, courseId, "2");
+      testData.createUserLesson(userId, lessonId1);
+      testData.createUserLesson(otherUserId, lessonId1);
+      testData.createUserLesson(otherUserId, lessonId2);
+
+      List<UserCourseDto> result = userCourseApplicationService.findUserCourses(userId);
+
+      assertEquals(new BigDecimal("50.0"), findCourse(result, courseId).courseProgress());
+    }
+
+    @Test
+    void 割り切れない進捗率は小数点第1位で切り捨てられること() {
+      UUID userId = testData.createUser("ul-third@example.com", "p", "七郎", "ulthird", "GENERAL");
+      UUID courseId = testData.createCourse(new BigDecimal("1006"), "UL3レッスンコース", "コース説明");
+      UUID lessonGroupId =
+          testData.createLessonGroup(courseId, new BigDecimal(1), "UL3レッスンコースのグループ");
+      UUID lessonId = createLesson(lessonGroupId, courseId, "1");
+      createLesson(lessonGroupId, courseId, "2");
+      createLesson(lessonGroupId, courseId, "3");
+      testData.createUserLesson(userId, lessonId);
+
+      List<UserCourseDto> result = userCourseApplicationService.findUserCourses(userId);
+
+      assertEquals(new BigDecimal("33.3"), findCourse(result, courseId).courseProgress());
+    }
+
+    @Test
     void コースが0件のとき空リストが返ること() {
       jdbcTemplate.execute("DELETE FROM courses");
 
@@ -110,5 +167,19 @@ public class UserCourseApplicationServiceImplTest {
           ResourceNotFoundException.class,
           () -> userCourseApplicationService.findUserCourses(UUID.randomUUID()));
     }
+  }
+
+  private UUID createLesson(UUID lessonGroupId, UUID courseId, String lessonOrder) {
+    return testData.createLesson(
+        lessonGroupId,
+        courseId,
+        new BigDecimal(lessonOrder),
+        "ULレッスン" + lessonOrder,
+        "説明",
+        "https://example.com/video.mp4");
+  }
+
+  private UserCourseDto findCourse(List<UserCourseDto> result, UUID courseId) {
+    return result.stream().filter(dto -> dto.id().equals(courseId)).findFirst().orElseThrow();
   }
 }

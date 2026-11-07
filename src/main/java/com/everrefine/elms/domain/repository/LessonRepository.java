@@ -2,7 +2,6 @@ package com.everrefine.elms.domain.repository;
 
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
-import com.everrefine.elms.domain.model.lesson.LessonSearchCriteria;
 import com.everrefine.elms.domain.model.lesson.LessonTagSearchCondition;
 import com.everrefine.elms.domain.model.lesson.LessonTagSearchCourse;
 import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
@@ -29,22 +28,6 @@ public interface LessonRepository {
    * @return レッスン一覧
    */
   List<Lesson> findByIdIn(List<UUID> lessonIds);
-
-  /**
-   * 検索条件に合致するレッスン一覧を取得する。
-   *
-   * @param criteria レッスン検索条件
-   * @return レッスン一覧
-   */
-  List<Lesson> findLessons(LessonSearchCriteria criteria);
-
-  /**
-   * 検索条件に合致するレッスンの件数を取得する。
-   *
-   * @param criteria レッスン検索条件
-   * @return レッスンの件数
-   */
-  int countLessons(LessonSearchCriteria criteria);
 
   /**
    * レッスングループIDに紐づくレッスン一覧を取得する。
