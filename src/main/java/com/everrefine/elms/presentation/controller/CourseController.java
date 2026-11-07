@@ -17,6 +17,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.io.IOException;
@@ -65,8 +66,9 @@ public class CourseController {
   })
   @GetMapping
   public CoursePageDto findCourses(
-      @RequestParam(defaultValue = "1") @Positive int pageNum,
-      @RequestParam(defaultValue = "10") @Positive int pageSize) {
+      // pageNumの上限は (pageNum - 1) * pageSize がintの最大値を超えない値（Integer.MAX_VALUE / pageSizeの上限100 + 1）
+      @RequestParam(defaultValue = "1") @Positive @Max(21474837) int pageNum,
+      @RequestParam(defaultValue = "10") @Positive @Max(100) int pageSize) {
     return courseApplicationService.findCourses(pageNum, pageSize);
   }
 

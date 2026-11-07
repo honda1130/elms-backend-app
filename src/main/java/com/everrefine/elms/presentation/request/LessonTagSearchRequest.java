@@ -2,6 +2,7 @@ package com.everrefine.elms.presentation.request;
 
 import com.everrefine.elms.application.command.LessonTagSearchCommand;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Positive;
 import jakarta.validation.constraints.Size;
@@ -12,9 +13,13 @@ public record LessonTagSearchRequest(
         @NotBlank(message = "タグ名は必須です")
         @Size(max = 255, message = "タグ名は255文字以内で入力してください")
         String tag,
-    @Schema(description = "ページ番号（1始まり）", example = "1") @Positive(message = "ページ番号は1以上を指定してください") Integer pageNum,
+    // pageNumの上限は (pageNum - 1) * pageSize がintの最大値を超えない値（Integer.MAX_VALUE / pageSizeの上限100 + 1）
+    @Schema(description = "ページ番号（1始まり）", example = "1")
+        @Positive(message = "ページ番号は1以上を指定してください") @Max(value = 21474837, message = "ページ番号は21474837以下を指定してください")
+        Integer pageNum,
     @Schema(description = "1ページ当たりの件数", example = "10")
-        @Positive(message = "1ページ当たりの件数は1以上を指定してください") Integer pageSize) {
+        @Positive(message = "1ページ当たりの件数は1以上を指定してください") @Max(value = 100, message = "1ページ当たりの件数は100以下を指定してください")
+        Integer pageSize) {
 
   /**
    * Commandオブジェクトに変換する。ページ番号・件数が未指定の場合はデフォルト値（1 / 10）を適用する。

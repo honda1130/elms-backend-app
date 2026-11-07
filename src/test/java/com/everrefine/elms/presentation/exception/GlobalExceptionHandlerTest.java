@@ -355,6 +355,122 @@ public class GlobalExceptionHandlerTest {
               jsonPath("$.message")
                   .value("フィーチャーフラグキーは100文字以内で入力してください。, enabled: フィーチャーフラグの有効状態は必須です。"));
     }
+
+    @Test
+    void コース一覧で1ページ当たりの件数が上限を超えるときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/courses").param("pageSize", "101"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void コース一覧でページ番号が上限を超えるときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/courses").param("pageNum", "21474838"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void ユーザー一覧で1ページ当たりの件数が上限を超えるときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/users").param("pageSize", "101"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void ユーザー一覧でページ番号が上限を超えるときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/users").param("pageNum", "21474838"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void お知らせ一覧で1ページ当たりの件数が上限を超えるときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/news").param("pageSize", "101"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void お知らせ一覧でページ番号が上限を超えるときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(MockMvcRequestBuilders.get("/api/news").param("pageNum", "21474838"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void タグ検索で1ページ当たりの件数が上限を超えるときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/lessons/search")
+                  .param("tag", "Java")
+                  .param("pageSize", "101"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+
+    @Test
+    void タグ検索でページ番号が上限を超えるときステータス400が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/lessons/search")
+                  .param("tag", "Java")
+                  .param("pageNum", "21474838"))
+          .andExpect(status().isBadRequest())
+          .andExpect(jsonPath("$.code").value("VALIDATION_ERROR"));
+    }
+  }
+
+  /** ページング上限値ちょうどではオフセットがintの範囲に収まり、エラーにならないことを確認する。 */
+  @Nested
+  class ページングの上限値 {
+
+    @Test
+    void コース一覧でページ番号と件数が上限値のときステータス200が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/courses")
+                  .param("pageNum", "21474837")
+                  .param("pageSize", "100"))
+          .andExpect(status().isOk());
+    }
+
+    @Test
+    void ユーザー一覧でページ番号と件数が上限値のときステータス200が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/users")
+                  .param("pageNum", "21474837")
+                  .param("pageSize", "100"))
+          .andExpect(status().isOk());
+    }
+
+    @Test
+    void お知らせ一覧でページ番号と件数が上限値のときステータス200が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/news")
+                  .param("pageNum", "21474837")
+                  .param("pageSize", "100"))
+          .andExpect(status().isOk());
+    }
+
+    @Test
+    void タグ検索でページ番号と件数が上限値のときステータス200が返ること() throws Exception {
+      mockMvc
+          .perform(
+              MockMvcRequestBuilders.get("/api/lessons/search")
+                  .param("tag", "Java")
+                  .param("pageNum", "21474837")
+                  .param("pageSize", "100"))
+          .andExpect(status().isOk());
+    }
   }
 
   @Nested
