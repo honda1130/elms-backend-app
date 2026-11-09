@@ -2,7 +2,6 @@ package com.everrefine.elms.infrastructure.repository;
 
 import com.everrefine.elms.domain.model.lesson.Lesson;
 import com.everrefine.elms.domain.model.lesson.LessonGroupWithLessons;
-import com.everrefine.elms.domain.model.lesson.LessonSearchCriteria;
 import com.everrefine.elms.domain.model.lesson.LessonTagSearchCondition;
 import com.everrefine.elms.domain.model.lesson.LessonTagSearchCourse;
 import com.everrefine.elms.domain.model.lesson.LessonWithCourseAndLessonGroup;
@@ -14,7 +13,6 @@ import com.everrefine.elms.infrastructure.row.LessonGroupWithLessonRow;
 import com.everrefine.elms.infrastructure.row.LessonTagSearchRow;
 import com.everrefine.elms.infrastructure.row.LessonWithCourseAndLessonGroupRow;
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,40 +40,6 @@ public class LessonRepositoryImpl implements LessonRepository {
       return List.of();
     }
     return lessonDao.findByIdIn(lessonIds).stream().map(LessonEntity::toDomain).toList();
-  }
-
-  @Override
-  public List<Lesson> findLessons(LessonSearchCriteria criteria) {
-    UUID courseId = criteria.courseId() != null ? UUID.fromString(criteria.courseId()) : null;
-    UUID lessonGroupId =
-        criteria.lessonGroupId() != null ? UUID.fromString(criteria.lessonGroupId()) : null;
-    LocalDate createdDateFrom = criteria.createdDateFrom();
-    LocalDate createdDateTo = criteria.createdDateTo();
-
-    return lessonDao
-        .findLessons(
-            courseId,
-            lessonGroupId,
-            criteria.title(),
-            createdDateFrom,
-            createdDateTo,
-            criteria.getPageSize(),
-            criteria.getOffset())
-        .stream()
-        .map(LessonEntity::toDomain)
-        .toList();
-  }
-
-  @Override
-  public int countLessons(LessonSearchCriteria criteria) {
-    UUID courseId = criteria.courseId() != null ? UUID.fromString(criteria.courseId()) : null;
-    UUID lessonGroupId =
-        criteria.lessonGroupId() != null ? UUID.fromString(criteria.lessonGroupId()) : null;
-    LocalDate createdDateFrom = criteria.createdDateFrom();
-    LocalDate createdDateTo = criteria.createdDateTo();
-
-    return lessonDao.countLessons(
-        courseId, lessonGroupId, criteria.title(), createdDateFrom, createdDateTo);
   }
 
   @Override

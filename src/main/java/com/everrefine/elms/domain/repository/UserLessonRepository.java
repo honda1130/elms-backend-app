@@ -1,6 +1,7 @@
 package com.everrefine.elms.domain.repository;
 
 import com.everrefine.elms.domain.model.UserLesson;
+import com.everrefine.elms.domain.model.user.CourseLessonCount;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -51,13 +52,14 @@ public interface UserLessonRepository {
   Map<UUID, Integer> countByUserIds(List<UUID> userIds);
 
   /**
-   * ユーザーのコース内完了レッスン数を取得する。
+   * コースごとの総レッスン数と、ユーザーの完了レッスン数をMap形式で取得する。
+   *
+   * <p>レッスンが1件もないコースは含まれない。
    *
    * @param userId ユーザーID
-   * @param courseId コースID
-   * @return 完了レッスン数
+   * @return コースIDをキー、総レッスン数と完了レッスン数を値とするMap
    */
-  int countCompletedLessonsByUserIdAndCourseId(UUID userId, UUID courseId);
+  Map<UUID, CourseLessonCount> countLessonsPerCourse(UUID userId);
 
   /**
    * ユーザーが完了したレッスンIDのセットを取得する。

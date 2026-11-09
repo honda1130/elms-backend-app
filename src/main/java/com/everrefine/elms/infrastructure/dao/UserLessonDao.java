@@ -2,6 +2,7 @@ package com.everrefine.elms.infrastructure.dao;
 
 import com.everrefine.elms.infrastructure.entity.UserLessonEntity;
 import com.everrefine.elms.infrastructure.row.CompletedLessonCountRow;
+import com.everrefine.elms.infrastructure.row.CourseLessonCountRow;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -74,12 +75,13 @@ public interface UserLessonDao extends CrudRepository<UserLessonEntity, UUID> {
 
   @Query(
       """
-          SELECT COUNT(*)
-          FROM user_lessons ul
-          INNER JOIN lessons l ON ul.lesson_id = l.id
-          WHERE ul.user_id = :userId
-          AND l.course_id = :courseId
+          SELECT l.course_id,
+                 COUNT(*) AS all_lesson_count,
+                 COUNT(ul.id) AS completed_lesson_count
+          FROM lessons l
+          LEFT JOIN user_lessons ul
+            ON ul.lesson_id = l.id AND ul.user_id = :userId
+          GROUP BY l.course_id
           """)
-  int countCompletedLessonsByUserIdAndCourseId(
-      @Param("userId") UUID userId, @Param("courseId") UUID courseId);
+  List<CourseLessonCountRow> countLessonsPerCourse(@Param("userId") UUID userId);
 }

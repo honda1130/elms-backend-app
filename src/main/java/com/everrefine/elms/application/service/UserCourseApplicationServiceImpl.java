@@ -4,15 +4,15 @@ import com.everrefine.elms.application.dto.UserCourseDto;
 import com.everrefine.elms.application.exception.ResourceNotFoundException;
 import com.everrefine.elms.domain.model.PagerForRequest;
 import com.everrefine.elms.domain.model.course.Course;
-import com.everrefine.elms.domain.model.lesson.LessonSearchCriteria;
+import com.everrefine.elms.domain.model.user.CourseLessonCount;
 import com.everrefine.elms.domain.model.user.ProgressRate;
 import com.everrefine.elms.domain.model.user.User;
 import com.everrefine.elms.domain.repository.CourseRepository;
-import com.everrefine.elms.domain.repository.LessonRepository;
 import com.everrefine.elms.domain.repository.UserLessonRepository;
 import com.everrefine.elms.domain.repository.UserRepository;
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 @AllArgsConstructor
 public class UserCourseApplicationServiceImpl implements UserCourseApplicationService {
 
-  private final LessonRepository lessonRepository;
   private final UserRepository userRepository;
   private final CourseRepository courseRepository;
   private final UserLessonRepository userLessonRepository;
@@ -51,19 +50,18 @@ public class UserCourseApplicationServiceImpl implements UserCourseApplicationSe
 
     PagerForRequest pager = new PagerForRequest(FIRST_PAGE_NUM, totalCourses);
     List<Course> courses = courseRepository.findCourses(pager);
+    // コースごとにクエリを発行しないよう、全コース分の件数をまとめて取得する
+    Map<UUID, CourseLessonCount> lessonCounts = userLessonRepository.countLessonsPerCourse(userId);
 
     return courses.stream()
         .map(
             course -> {
-              int allLessonsCnt =
-                  lessonRepository.countLessons(
-                      new LessonSearchCriteria(
-                          1, 1, String.valueOf(course.id()), null, null, null, null));
-              int completedLessonCnt =
-                  userLessonRepository.countCompletedLessonsByUserIdAndCourseId(
-                      userId, course.id());
+              // レッスンが1件もないコースは集約結果に含まれない
+              CourseLessonCount lessonCount =
+                  lessonCounts.getOrDefault(course.id(), CourseLessonCount.NO_LESSONS);
               BigDecimal progress =
-                  ProgressRate.of(completedLessonCnt, allLessonsCnt).toBigDecimal();
+                  ProgressRate.of(lessonCount.completedLessonCount(), lessonCount.allLessonCount())
+                      .toBigDecimal();
               return UserCourseDto.from(course, progress);
             })
         .toList();

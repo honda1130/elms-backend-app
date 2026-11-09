@@ -1,10 +1,12 @@
 package com.everrefine.elms.infrastructure.repository;
 
 import com.everrefine.elms.domain.model.UserLesson;
+import com.everrefine.elms.domain.model.user.CourseLessonCount;
 import com.everrefine.elms.domain.repository.UserLessonRepository;
 import com.everrefine.elms.infrastructure.dao.UserLessonDao;
 import com.everrefine.elms.infrastructure.entity.UserLessonEntity;
 import com.everrefine.elms.infrastructure.row.CompletedLessonCountRow;
+import com.everrefine.elms.infrastructure.row.CourseLessonCountRow;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -54,8 +56,13 @@ public class UserLessonRepositoryImpl implements UserLessonRepository {
   }
 
   @Override
-  public int countCompletedLessonsByUserIdAndCourseId(UUID userId, UUID courseId) {
-    return userLessonDao.countCompletedLessonsByUserIdAndCourseId(userId, courseId);
+  public Map<UUID, CourseLessonCount> countLessonsPerCourse(UUID userId) {
+    List<CourseLessonCountRow> counts = userLessonDao.countLessonsPerCourse(userId);
+    return counts.stream()
+        .collect(
+            Collectors.toMap(
+                CourseLessonCountRow::courseId,
+                row -> new CourseLessonCount(row.allLessonCount(), row.completedLessonCount())));
   }
 
   @Override
