@@ -29,9 +29,6 @@ public class UserCourseApplicationServiceImpl implements UserCourseApplicationSe
 
   private static final int FIRST_PAGE_NUM = 1;
 
-  /** レッスンが1件もないコースの件数。集約結果に含まれないコースに使う。 */
-  private static final CourseLessonCount NO_LESSONS = new CourseLessonCount(0, 0);
-
   /**
    * 引数に指定されたユーザーIDに紐づくユーザーのコース一覧を取得する。
    *
@@ -59,7 +56,9 @@ public class UserCourseApplicationServiceImpl implements UserCourseApplicationSe
     return courses.stream()
         .map(
             course -> {
-              CourseLessonCount lessonCount = lessonCounts.getOrDefault(course.id(), NO_LESSONS);
+              // レッスンが1件もないコースは集約結果に含まれない
+              CourseLessonCount lessonCount =
+                  lessonCounts.getOrDefault(course.id(), CourseLessonCount.NO_LESSONS);
               BigDecimal progress =
                   ProgressRate.of(lessonCount.completedLessonCount(), lessonCount.allLessonCount())
                       .toBigDecimal();

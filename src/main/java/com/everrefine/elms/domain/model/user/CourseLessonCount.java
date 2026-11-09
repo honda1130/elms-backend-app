@@ -6,4 +6,8 @@ package com.everrefine.elms.domain.model.user;
  * @param allLessonCount コース内の総レッスン数
  * @param completedLessonCount ユーザーが完了したコース内のレッスン数
  */
-public record CourseLessonCount(int allLessonCount, int completedLessonCount) {}
+public record CourseLessonCount(int allLessonCount, int completedLessonCount) {
+
+  /** レッスンが1件もないコースの件数。 */
+  public static final CourseLessonCount NO_LESSONS = new CourseLessonCount(0, 0);
+}
