@@ -1,6 +1,7 @@
 package com.everrefine.elms.presentation.request;
 
 import com.everrefine.elms.application.command.NewsSearchCommand;
+import com.everrefine.elms.presentation.PageLimits;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Positive;
@@ -9,9 +10,10 @@ import java.time.LocalDate;
 
 /** お知らせ検索リクエスト。 */
 public record NewsSearchRequest(
-    // pageNumの上限は (pageNum - 1) * pageSize がintの最大値を超えない値（Integer.MAX_VALUE / pageSizeの上限100 + 1）
-    @Schema(description = "ページ番号（1始まり）", example = "1") @Positive @Max(21474837) Integer pageNum,
-    @Schema(description = "1ページ当たりの件数", example = "10") @Positive @Max(100) Integer pageSize,
+    @Schema(description = "ページ番号（1始まり）", example = "1") @Positive @Max(PageLimits.MAX_PAGE_NUM)
+        Integer pageNum,
+    @Schema(description = "1ページ当たりの件数", example = "10") @Positive @Max(PageLimits.MAX_PAGE_SIZE)
+        Integer pageSize,
     @Schema(description = "タイトル（部分一致）", example = "メンテナンス") @Size(max = 255) String title,
     @Schema(description = "登録日From", example = "2024-01-01") LocalDate createdDateFrom,
     @Schema(description = "登録日To", example = "2024-12-31") LocalDate createdDateTo) {

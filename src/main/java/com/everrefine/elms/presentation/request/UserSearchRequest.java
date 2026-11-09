@@ -1,6 +1,7 @@
 package com.everrefine.elms.presentation.request;
 
 import com.everrefine.elms.application.command.UserSearchCommand;
+import com.everrefine.elms.presentation.PageLimits;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Pattern;
@@ -10,9 +11,10 @@ import java.time.LocalDate;
 
 /** ユーザー検索リクエスト。 */
 public record UserSearchRequest(
-    // pageNumの上限は (pageNum - 1) * pageSize がintの最大値を超えない値（Integer.MAX_VALUE / pageSizeの上限100 + 1）
-    @Schema(description = "ページ番号（1始まり）", example = "1") @Positive @Max(21474837) Integer pageNum,
-    @Schema(description = "1ページ当たりの件数", example = "10") @Positive @Max(100) Integer pageSize,
+    @Schema(description = "ページ番号（1始まり）", example = "1") @Positive @Max(PageLimits.MAX_PAGE_NUM)
+        Integer pageNum,
+    @Schema(description = "1ページ当たりの件数", example = "10") @Positive @Max(PageLimits.MAX_PAGE_SIZE)
+        Integer pageSize,
     @Schema(description = "ユーザーID（部分一致）", example = "550e8400-e29b-41d4-a716-446655440000")
         @Pattern(regexp = "[0-9a-fA-F\\-]*", message = "ユーザーIDはUUIDの形式（16進数とハイフン）で指定してください")
         String userId,

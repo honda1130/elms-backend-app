@@ -10,6 +10,7 @@ import com.everrefine.elms.application.dto.LessonImportResponseDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.service.CourseApplicationService;
 import com.everrefine.elms.application.service.LessonApplicationService;
+import com.everrefine.elms.presentation.PageLimits;
 import com.everrefine.elms.presentation.request.CourseCreateRequest;
 import com.everrefine.elms.presentation.request.CourseUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -66,9 +67,8 @@ public class CourseController {
   })
   @GetMapping
   public CoursePageDto findCourses(
-      // pageNumの上限は (pageNum - 1) * pageSize がintの最大値を超えない値（Integer.MAX_VALUE / pageSizeの上限100 + 1）
-      @RequestParam(defaultValue = "1") @Positive @Max(21474837) int pageNum,
-      @RequestParam(defaultValue = "10") @Positive @Max(100) int pageSize) {
+      @RequestParam(defaultValue = "1") @Positive @Max(PageLimits.MAX_PAGE_NUM) int pageNum,
+      @RequestParam(defaultValue = "10") @Positive @Max(PageLimits.MAX_PAGE_SIZE) int pageSize) {
     return courseApplicationService.findCourses(pageNum, pageSize);
   }
 
