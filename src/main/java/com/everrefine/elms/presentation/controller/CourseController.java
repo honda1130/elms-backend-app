@@ -10,6 +10,7 @@ import com.everrefine.elms.application.dto.LessonImportResponseDto;
 import com.everrefine.elms.application.exception.BadRequestException;
 import com.everrefine.elms.application.service.CourseApplicationService;
 import com.everrefine.elms.application.service.LessonApplicationService;
+import com.everrefine.elms.presentation.PageLimits;
 import com.everrefine.elms.presentation.request.CourseCreateRequest;
 import com.everrefine.elms.presentation.request.CourseUpdateRequest;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +18,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 import java.io.IOException;
@@ -65,8 +67,8 @@ public class CourseController {
   })
   @GetMapping
   public CoursePageDto findCourses(
-      @RequestParam(defaultValue = "1") @Positive int pageNum,
-      @RequestParam(defaultValue = "10") @Positive int pageSize) {
+      @RequestParam(defaultValue = "1") @Positive @Max(PageLimits.MAX_PAGE_NUM) int pageNum,
+      @RequestParam(defaultValue = "10") @Positive @Max(PageLimits.MAX_PAGE_SIZE) int pageSize) {
     return courseApplicationService.findCourses(pageNum, pageSize);
   }
 
